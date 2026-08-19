@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: EC-01
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+jwt:
+  # Base64-encoded HMAC key, at least 32 decoded bytes. No fallback is allowed.
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:7200000}
+
+login:
+  session:
+    ttl: ${LOGIN_SESSION_TTL:7200}
