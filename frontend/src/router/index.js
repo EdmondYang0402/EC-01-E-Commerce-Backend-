@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ShopLayout from '../layouts/ShopLayout.vue'
+import AdminLayout from '../layouts/AdminLayout.vue'
 import HomeView from '../views/HomeView.vue'
 import { AUTH_TOKEN_KEY } from '../services/http'
 
@@ -7,6 +8,21 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior: (to) => to.hash ? { el: to.hash, behavior: 'smooth' } : { top: 0 },
   routes: [
+    {
+      path: '/admin',
+      component: AdminLayout,
+      meta: { requiresAuth: true },
+      redirect: '/admin/products',
+      children: [
+        { path: 'products', name: 'admin-products', component: () => import('../views/admin/AdminProductListView.vue') },
+        { path: 'products/create', name: 'admin-product-create', component: () => import('../views/admin/AdminProductFormView.vue') },
+        { path: 'products/:productId', name: 'admin-product-detail', component: () => import('../views/admin/AdminProductDetailView.vue') },
+        { path: 'products/:productId/edit', name: 'admin-product-edit', component: () => import('../views/admin/AdminProductFormView.vue') },
+        { path: 'orders', name: 'admin-orders', component: () => import('../views/admin/AdminOrderListView.vue') },
+        { path: 'orders/:orderNo', name: 'admin-order-detail', component: () => import('../views/admin/AdminOrderDetailView.vue') },
+        { path: 'users', name: 'admin-users', component: () => import('../views/admin/AdminUserListView.vue') },
+      ],
+    },
     {
       path: '/',
       component: ShopLayout,
@@ -48,6 +64,18 @@ const router = createRouter({
           path: 'cart',
           name: 'cart',
           component: () => import('../views/CartView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'orders',
+          name: 'orders',
+          component: () => import('../views/OrderListView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'orders/:orderNo',
+          name: 'order-detail',
+          component: () => import('../views/OrderDetailView.vue'),
           meta: { requiresAuth: true },
         },
       ],

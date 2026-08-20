@@ -1,21 +1,30 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import fallbackImage from '../assets/products/chair.png'
 import { errorMessage } from '../services/http'
 import { useCartStore } from '../stores/cart'
 import { useLocaleStore } from '../stores/locale'
+import { useOrderStore } from '../stores/orders'
 
 const cart = useCartStore()
+const orders = useOrderStore()
 const locale = useLocaleStore()
+const router = useRouter()
 const { items, itemCount, selectedCount, selectedTotal, loading } = storeToRefs(cart)
+const { creating } = storeToRefs(orders)
 const pendingId = ref(null)
+const checkoutForm = reactive({ receiverName: '', receiverPhone: '', receiverAddress: '' })
+const selectedCartItemIds = computed(() => items.value
+  .filter((item) => Number(item.selected) === 1)
+  .map((item) => item.cartItemId))
 const t = (key, params) => locale.t(key, params)
 
 const formatCurrency = (value) => new Intl.NumberFormat(
   locale.locale === 'zh' ? 'zh-CN' : locale.locale,
-  { style: 'currency', currency: 'USD' },
+  { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 
 const formatSpec = (specJson) => {
@@ -74,6 +83,33 @@ const removeItem = async (item) => {
     await loadCart()
   } finally {
     pendingId.value = null
+  }
+}
+
+const checkout = async () => {
+  if (!selectedCartItemIds.value.length) {
+    ElMessage.warning(t('cart.selectForCheckout'))
+    return
+  }
+  if (!checkoutForm.receiverName.trim()
+      || !checkoutForm.receiverPhone.trim()
+      || !checkoutForm.receiverAddress.trim()) {
+    ElMessage.warning(t('cart.receiverRequired'))
+    return
+  }
+
+  try {
+    const orderNo = await orders.createOrder({
+      cartItemIds: selectedCartItemIds.value,
+      receiverName: checkoutForm.receiverName.trim(),
+      receiverPhone: checkoutForm.receiverPhone.trim(),
+      receiverAddress: checkoutForm.receiverAddress.trim(),
+    })
+    await cart.fetchCart()
+    ElMessage.success(t('cart.orderCreated'))
+    await router.push({ name: 'order-detail', params: { orderNo } })
+  } catch (error) {
+    ElMessage.error(errorMessage(error, t('cart.checkoutFailed')))
   }
 }
 
@@ -140,8 +176,15 @@ onMounted(loadCart)
       <aside class="summary">
         <p>{{ t('cart.selectedItems', { count: selectedCount }) }}</p>
         <div><span>{{ t('cart.total') }}</span><strong>{{ formatCurrency(selectedTotal) }}</strong></div>
-        <el-button disabled :title="t('cart.checkoutUnavailable')">{{ t('cart.checkout') }}</el-button>
-        <small>{{ t('cart.checkoutUnavailable') }}</small>
+        <form class="checkout-form" @submit.prevent="checkout">
+          <label>{{ t('cart.receiverName') }}<el-input v-model="checkoutForm.receiverName" maxlength="50" /></label>
+          <label>{{ t('cart.receiverPhone') }}<el-input v-model="checkoutForm.receiverPhone" maxlength="30" /></label>
+          <label>{{ t('cart.receiverAddress') }}<el-input v-model="checkoutForm.receiverAddress" maxlength="500" type="textarea" :rows="3" /></label>
+          <el-button native-type="submit" :loading="creating" :disabled="!selectedCartItemIds.length">
+            {{ t('cart.checkout') }}
+          </el-button>
+        </form>
+        <small>{{ t('cart.serverPriceNote') }}</small>
       </aside>
     </div>
   </section>
@@ -179,6 +222,8 @@ h1 { margin: 0; font-size: clamp(40px, 5vw, 68px); letter-spacing: -.055em; }
 .summary > div strong { font-size: 18px; }
 .summary .el-button { width: 100%; height: 42px; margin-top: 8px; }
 .summary small { display: block; margin-top: 10px; color: var(--muted); font-size: 9px; text-align: center; }
+.checkout-form { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.checkout-form label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
 .state, .empty { padding: 90px 0; color: var(--muted); text-align: center; }
 .empty a { display: inline-block; margin-top: 12px; padding: 10px 16px; color: white; background: var(--ink); text-decoration: none; }
 @media (max-width: 1050px) { .cart__content { grid-template-columns: 1fr; } .summary { position: static; } }

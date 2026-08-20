@@ -1,0 +1,7 @@
+catalog:
+  import:
+    source-url: ${CATALOG_IMPORT_SOURCE_URL:https://dummyjson.com/products}
+    limit: ${CATALOG_IMPORT_LIMIT:100}
+    object-prefix: ${CATALOG_IMPORT_OBJECT_PREFIX:catalog/dummyjson}
+    # DummyJSON prices are treated as USD-like demo values and converted to CNY-like demo prices.
+    currency-multiplier: ${CATALOG_IMPORT_CURRENCY_MULTIPLIER:7.20}

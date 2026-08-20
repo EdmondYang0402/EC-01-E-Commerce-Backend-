@@ -21,6 +21,9 @@ public interface OrderMapper {
             order_no,
             total_amount,
             status,
+            receiver_name,
+            receiver_phone,
+            receiver_address,
             create_time,
             update_time
         )
@@ -29,6 +32,9 @@ public interface OrderMapper {
             #{orderNo},
             #{totalAmount},
             #{status},
+            #{receiverName},
+            #{receiverPhone},
+            #{receiverAddress},
             #{createTime},
             #{updateTime}
         )
@@ -82,4 +88,60 @@ public interface OrderMapper {
             @Param("orderNo") String orderNo,
             @Param("userId") Long userId
     );
+
+    @Select("""
+            <script>
+            SELECT *
+            FROM orders
+            WHERE 1 = 1
+            <if test="orderNo != null and orderNo != ''">
+                AND order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            ORDER BY create_time DESC, id DESC
+            LIMIT #{offset}, #{size}
+            </script>
+            """)
+    List<Order> selectAdminPage(
+            @Param("orderNo") String orderNo,
+            @Param("status") Byte status,
+            @Param("userId") Long userId,
+            @Param("offset") long offset,
+            @Param("size") Integer size
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*)
+            FROM orders
+            WHERE 1 = 1
+            <if test="orderNo != null and orderNo != ''">
+                AND order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            </script>
+            """)
+    long countAdminOrders(
+            @Param("orderNo") String orderNo,
+            @Param("status") Byte status,
+            @Param("userId") Long userId
+    );
+
+    @Select("""
+            SELECT *
+            FROM orders
+            WHERE order_no = #{orderNo}
+            LIMIT 1
+            """)
+    Order selectByOrderNo(@Param("orderNo") String orderNo);
 }

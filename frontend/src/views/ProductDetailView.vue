@@ -26,7 +26,7 @@ const imageUrl = computed(() => detail.value?.coverUrl || fallbackImage)
 
 const formatPrice = (value) => new Intl.NumberFormat(
   locale.locale === 'zh' ? 'zh-CN' : locale.locale,
-  { style: 'currency', currency: 'USD' },
+  { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 
 const formatSpec = (specJson) => {

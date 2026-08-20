@@ -2,13 +2,22 @@ package com.ec01.service;
 
 import com.ec01.common.PageResult;
 import com.ec01.dto.order.PageQueryDTO;
+import com.ec01.dto.order.CreateOrderDTO;
+import com.ec01.entity.CartItem;
 import com.ec01.entity.Order;
+import com.ec01.entity.OrderItem;
+import com.ec01.entity.Product;
+import com.ec01.entity.Sku;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.OrderItemMapper;
 import com.ec01.mapper.OrderMapper;
+import com.ec01.mapper.CartItemMapper;
+import com.ec01.mapper.ProductMapper;
+import com.ec01.mapper.SkuMapper;
 import com.ec01.security.UserContext;
 import com.ec01.service.impl.OrderServiceImpl;
 import com.ec01.vo.order.OrderItemVO;
+import com.ec01.vo.order.OrderDetailVO;
 import com.ec01.vo.order.OrderListVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +29,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,13 +41,24 @@ class OrderServiceImplTest {
 
     private OrderMapper orderMapper;
     private OrderItemMapper orderItemMapper;
+    private CartItemMapper cartItemMapper;
+    private SkuMapper skuMapper;
+    private ProductMapper productMapper;
     private OrderServiceImpl orderService;
 
     @BeforeEach
     void setUp() {
         orderMapper = mock(OrderMapper.class);
         orderItemMapper = mock(OrderItemMapper.class);
-        orderService = new OrderServiceImpl(orderMapper, orderItemMapper);
+        cartItemMapper = mock(CartItemMapper.class);
+        skuMapper = mock(SkuMapper.class);
+        productMapper = mock(ProductMapper.class);
+        orderService = new OrderServiceImpl(
+                orderMapper,
+                orderItemMapper,
+                cartItemMapper,
+                skuMapper,
+                productMapper);
         UserContext.set(42L);
     }
 
@@ -111,5 +134,85 @@ class OrderServiceImplTest {
 
         assertEquals(401, exception.getCode());
         verifyNoInteractions(orderMapper, orderItemMapper);
+    }
+
+    @Test
+    void createsOrderFromOwnedCartItemsAndPersistsSnapshots() {
+        CartItem cartItem = new CartItem();
+        cartItem.setId(7L);
+        cartItem.setUserId(42L);
+        cartItem.setSkuId(11L);
+        cartItem.setQuantity(2);
+
+        Sku sku = new Sku();
+        sku.setId(11L);
+        sku.setProductId(3L);
+        sku.setStatus((byte) 1);
+        sku.setStock(5);
+        sku.setPrice(new BigDecimal("99.50"));
+        sku.setSpecJson("{\"color\":\"black\"}");
+
+        Product product = new Product();
+        product.setId(3L);
+        product.setName("Chair");
+        product.setCoverUrl("/chair.png");
+        product.setStatus((byte) 1);
+
+        when(cartItemMapper.selectByUserIdAndCartItemIds(42L, List.of(7L)))
+                .thenReturn(List.of(cartItem));
+        when(skuMapper.selectById(11L)).thenReturn(sku);
+        when(productMapper.selectById(3L)).thenReturn(product);
+        when(skuMapper.deductStock(11L, 2)).thenReturn(1);
+        when(orderMapper.insert(any(Order.class))).thenAnswer(invocation -> {
+            invocation.<Order>getArgument(0).setId(90L);
+            return 1;
+        });
+        when(orderItemMapper.insert(any(OrderItem.class))).thenReturn(1);
+        when(cartItemMapper.deleteByIdAndUserId(7L, 42L)).thenReturn(1);
+
+        CreateOrderDTO dto = new CreateOrderDTO();
+        dto.setCartItemIds(List.of(7L));
+        dto.setReceiverName("Alice");
+        dto.setReceiverPhone("13800000000");
+        dto.setReceiverAddress("Shanghai");
+
+        String orderNo = orderService.createOrder(dto);
+
+        assertNotNull(orderNo);
+        verify(orderMapper).insert(argThat(order ->
+                order.getUserId() == 42L
+                        && new BigDecimal("199.00").compareTo(order.getTotalAmount()) == 0
+                        && "Alice".equals(order.getReceiverName())
+                        && "13800000000".equals(order.getReceiverPhone())
+                        && "Shanghai".equals(order.getReceiverAddress())));
+        verify(orderItemMapper).insert(argThat(item ->
+                item.getOrderId() == 90L
+                        && item.getProductId() == 3L
+                        && item.getSkuId() == 11L
+                        && "Chair".equals(item.getProductName())
+                        && new BigDecimal("199.00").compareTo(item.getSubtotal()) == 0));
+        verify(cartItemMapper).deleteByIdAndUserId(7L, 42L);
+    }
+
+    @Test
+    void orderDetailUsesCurrentUserAndPurchaseSnapshots() {
+        Order order = new Order();
+        order.setId(90L);
+        order.setOrderNo("EC0090");
+        order.setReceiverName("Alice");
+        order.setReceiverPhone("13800000000");
+        order.setReceiverAddress("Shanghai");
+        OrderItemVO item = new OrderItemVO();
+        item.setProductName("Historical chair");
+
+        when(orderMapper.selectByOrderNoAndUserId("EC0090", 42L)).thenReturn(order);
+        when(orderItemMapper.selectByOrderId(90L)).thenReturn(List.of(item));
+
+        OrderDetailVO detail = orderService.getOrderDetail(" EC0090 ");
+
+        assertEquals("EC0090", detail.getOrderNo());
+        assertEquals("Alice", detail.getReceiverName());
+        assertEquals(List.of(item), detail.getItems());
+        verify(orderMapper).selectByOrderNoAndUserId("EC0090", 42L);
     }
 }

@@ -6,9 +6,11 @@ import com.ec01.common.PageResult;
 import com.ec01.exception.GlobalExceptionHandler;
 import com.ec01.security.JwtInterceptor;
 import com.ec01.service.OrderService;
+import com.ec01.vo.order.OrderDetailVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -20,6 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -79,6 +82,33 @@ class OrderControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void authenticatedUserCanCreateOrderAndReadDetail() throws Exception {
+        mockValidToken();
+        when(orderService.createOrder(argThat(dto ->
+                dto.getCartItemIds().equals(List.of(7L))
+                        && "Alice".equals(dto.getReceiverName()))))
+                .thenReturn("EC202608200001");
+        OrderDetailVO detail = new OrderDetailVO();
+        detail.setOrderNo("EC202608200001");
+        when(orderService.getOrderDetail("EC202608200001")).thenReturn(detail);
+
+        mockMvc.perform(post("/api/orders")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"cartItemIds":[7],"receiverName":"Alice",
+                                 "receiverPhone":"13800000000","receiverAddress":"Shanghai"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("EC202608200001"));
+
+        mockMvc.perform(get("/api/orders/EC202608200001")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderNo").value("EC202608200001"));
     }
 
     private void mockValidToken() {

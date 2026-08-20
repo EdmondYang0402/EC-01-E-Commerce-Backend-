@@ -13,7 +13,7 @@ defineEmits(['favorite'])
 
 const imageUrl = computed(() => props.product.coverUrl || props.product.image || fallbackImage)
 const price = computed(() => Number(props.product.minPrice ?? props.product.price ?? 0))
-const formatPrice = (value) => `$${Number(value).toFixed(2)}`
+const formatPrice = (value) => `¥${Number(value).toFixed(2)}`
 const locale = useLocaleStore()
 </script>
 

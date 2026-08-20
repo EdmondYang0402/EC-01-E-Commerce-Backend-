@@ -3,6 +3,8 @@ package com.ec01.mapper;
 import com.ec01.entity.User;
 import org.apache.ibatis.annotations.*;
 
+import java.util.List;
+
 @Mapper
 public interface UserMapper {
 
@@ -56,5 +58,61 @@ public interface UserMapper {
     WHERE id = #{id}
 """)
     int updatePassword(@Param("id") Long id, @Param("password") String password);
+
+    @Select("""
+    <script>
+    SELECT *
+    FROM users
+    WHERE 1 = 1
+    <if test="keyword != null and keyword != ''">
+        AND (
+            username LIKE CONCAT('%', #{keyword}, '%')
+            OR nickname LIKE CONCAT('%', #{keyword}, '%')
+            OR phone LIKE CONCAT('%', #{keyword}, '%')
+        )
+    </if>
+    <if test="status != null">
+        AND status = #{status}
+    </if>
+    ORDER BY create_time DESC, id DESC
+    LIMIT #{offset}, #{size}
+    </script>
+    """)
+    List<User> selectAdminPage(
+            @Param("keyword") String keyword,
+            @Param("status") Integer status,
+            @Param("offset") long offset,
+            @Param("size") Integer size
+    );
+
+    @Select("""
+    <script>
+    SELECT COUNT(*)
+    FROM users
+    WHERE 1 = 1
+    <if test="keyword != null and keyword != ''">
+        AND (
+            username LIKE CONCAT('%', #{keyword}, '%')
+            OR nickname LIKE CONCAT('%', #{keyword}, '%')
+            OR phone LIKE CONCAT('%', #{keyword}, '%')
+        )
+    </if>
+    <if test="status != null">
+        AND status = #{status}
+    </if>
+    </script>
+    """)
+    long countAdminUsers(
+            @Param("keyword") String keyword,
+            @Param("status") Integer status
+    );
+
+    @Update("""
+    UPDATE users
+    SET status = #{status},
+        update_time = NOW()
+    WHERE id = #{id}
+    """)
+    int updateStatus(@Param("id") Long id, @Param("status") int status);
 
 }

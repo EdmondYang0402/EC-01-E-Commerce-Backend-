@@ -1,0 +1,9 @@
+
+> ec-01-storefront@0.1.0 dev
+> vite --host 127.0.0.1 --port 4178
+
+
+  VITE v7.3.6  ready in 1095 ms
+
+  ➜  Local:   http://127.0.0.1:4178/
+  ➜  press h + enter to show help

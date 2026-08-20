@@ -23,7 +23,7 @@ const submit = async () => {
   try {
     await auth.login({ username: form.username.trim(), password: form.password })
     ElMessage.success(t('login.success'))
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/profile'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/products'
     await router.replace(redirect)
   } catch (error) {
     ElMessage.error(errorMessage(error, t('login.failed')))

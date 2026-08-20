@@ -1,6 +1,11 @@
 spring:
   application:
     name: EC-01
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:ec01}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -18,3 +23,9 @@ jwt:
 login:
   session:
     ttl: ${LOGIN_SESSION_TTL:7200}
+
+oss:
+  region: cn-shanghai
+  endpoint: https://oss-cn-shanghai.aliyuncs.com
+  bucket-name: e-commerce-backend-ec-01
+  public-base-url: https://e-commerce-backend-ec-01.oss-cn-shanghai.aliyuncs.com

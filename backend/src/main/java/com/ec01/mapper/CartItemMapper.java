@@ -8,6 +8,25 @@ import java.util.List;
 
 @Mapper
 public interface CartItemMapper {
+    @Select("""
+    <script>
+    SELECT *
+    FROM cart_item
+    WHERE user_id = #{userId}
+      AND id IN
+      <foreach collection="cartItemIds"
+               item="cartItemId"
+               open="("
+               separator=","
+               close=")">
+          #{cartItemId}
+      </foreach>
+    </script>
+""")
+    List<CartItem> selectByUserIdAndCartItemIds(
+            @Param("userId") Long userId,
+            @Param("cartItemIds") List<Long> cartItemIds
+    );
 
     @Select("""
         SELECT *

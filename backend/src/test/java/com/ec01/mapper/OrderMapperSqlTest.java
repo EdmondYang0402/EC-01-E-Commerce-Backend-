@@ -49,6 +49,16 @@ class OrderMapperSqlTest {
         assertTrue(sql.contains("where order_id = ?"));
     }
 
+    @Test
+    void orderInsertPersistsReceiverSnapshot() {
+        String sql = normalize(statement(OrderMapper.class, "insert")
+                .getBoundSql(new com.ec01.entity.Order()).getSql());
+
+        assertTrue(sql.contains("receiver_name"));
+        assertTrue(sql.contains("receiver_phone"));
+        assertTrue(sql.contains("receiver_address"));
+    }
+
     private MappedStatement statement(Class<?> mapper, String method) {
         return configuration.getMappedStatement(mapper.getName() + "." + method);
     }
