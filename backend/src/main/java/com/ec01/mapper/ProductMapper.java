@@ -149,4 +149,46 @@ public interface ProductMapper {
             @Param("keyword") String keyword,
             @Param("categoryId") Long categoryId
     );
+
+    @Select("""
+            <script>
+            SELECT
+                p.id,
+                p.name,
+                p.subtitle,
+                p.cover_url,
+                p.status,
+                (
+                    SELECT MIN(s.price)
+                    FROM sku s
+                    WHERE s.product_id = p.id AND s.status = 1
+                ) AS min_price
+            FROM product p
+            WHERE p.status = 1
+              AND p.category_id IN
+              <foreach collection="categoryIds" item="categoryId" open="(" separator="," close=")">
+                  #{categoryId}
+              </foreach>
+            ORDER BY p.id DESC
+            LIMIT #{offset}, #{pageSize}
+            </script>
+            """)
+    List<ProductListVO> selectProductPageByCategoryIds(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("offset") long offset,
+            @Param("pageSize") Integer pageSize
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*)
+            FROM product
+            WHERE status = 1
+              AND category_id IN
+              <foreach collection="categoryIds" item="categoryId" open="(" separator="," close=")">
+                  #{categoryId}
+              </foreach>
+            </script>
+            """)
+    long countProductsByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
 }

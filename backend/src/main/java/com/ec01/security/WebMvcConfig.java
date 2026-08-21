@@ -10,6 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final AdminAuthorizationInterceptor adminAuthorizationInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -21,5 +22,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login",
                         "/product/**"
                 );
+
+        registry.addInterceptor(adminAuthorizationInterceptor)
+                .addPathPatterns("/api/admin/**");
     }
 }

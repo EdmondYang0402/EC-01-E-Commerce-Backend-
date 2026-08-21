@@ -29,12 +29,14 @@ class ProductServiceImplTest {
     private ProductMapper productMapper;
     @Mock
     private SkuMapper skuMapper;
+    @Mock
+    private CategoryService categoryService;
 
     private ProductServiceImpl productService;
 
     @BeforeEach
     void setUp() {
-        productService = new ProductServiceImpl(productMapper, skuMapper);
+        productService = new ProductServiceImpl(productMapper, skuMapper, categoryService);
     }
 
     @Test
@@ -59,13 +61,14 @@ class ProductServiceImplTest {
         dto.setSize(10);
         dto.setKeyword("  chair  ");
         dto.setCategoryId(2L);
-        when(productMapper.selectProductPage("chair", 2L, 20L, 10)).thenReturn(List.of());
-        when(productMapper.countProducts("chair", 2L)).thenReturn(0L);
+        when(categoryService.getProductsByCategory(2L, 3, 10))
+                .thenReturn(new PageResult<>(List.of(), 0L));
 
         PageResult<ProductListVO> result = productService.getProductPage(dto);
 
         assertEquals(0L, result.getTotal());
         assertTrue(result.getRecords().isEmpty());
+        verify(categoryService).getProductsByCategory(2L, 3, 10);
     }
 
     @Test

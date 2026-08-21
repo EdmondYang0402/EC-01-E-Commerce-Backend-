@@ -1,6 +1,7 @@
 package com.ec01.dto.admin.product;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class ProductCreateDTO {
 
     private String description;
 
+    @NotNull(message = "二级分类不能为空")
     @Positive(message = "分类ID必须为正数")
     private Long categoryId;
 }

@@ -3,6 +3,7 @@ import ShopLayout from '../layouts/ShopLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import HomeView from '../views/HomeView.vue'
 import { AUTH_TOKEN_KEY } from '../services/http'
+import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -11,13 +12,14 @@ const router = createRouter({
     {
       path: '/admin',
       component: AdminLayout,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
       redirect: '/admin/products',
       children: [
         { path: 'products', name: 'admin-products', component: () => import('../views/admin/AdminProductListView.vue') },
         { path: 'products/create', name: 'admin-product-create', component: () => import('../views/admin/AdminProductFormView.vue') },
         { path: 'products/:productId', name: 'admin-product-detail', component: () => import('../views/admin/AdminProductDetailView.vue') },
         { path: 'products/:productId/edit', name: 'admin-product-edit', component: () => import('../views/admin/AdminProductFormView.vue') },
+        { path: 'categories', name: 'admin-categories', component: () => import('../views/admin/AdminCategoryView.vue') },
         { path: 'orders', name: 'admin-orders', component: () => import('../views/admin/AdminOrderListView.vue') },
         { path: 'orders/:orderNo', name: 'admin-order-detail', component: () => import('../views/admin/AdminOrderDetailView.vue') },
         { path: 'users', name: 'admin-users', component: () => import('../views/admin/AdminUserListView.vue') },
@@ -55,6 +57,11 @@ const router = createRouter({
           meta: { guestOnly: true },
         },
         {
+          path: 'forbidden',
+          name: 'forbidden',
+          component: () => import('../views/ForbiddenView.vue'),
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../views/ProfileView.vue'),
@@ -83,13 +90,23 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authenticated = Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
   if (to.meta.requiresAuth && !authenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.guestOnly && authenticated) {
     return { name: 'profile' }
+  }
+  if (to.meta.requiresAdmin) {
+    const auth = useAuthStore()
+    try {
+      if (!auth.profile) await auth.fetchProfile()
+    } catch {
+      auth.clearSession()
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    if (!auth.isAdmin) return { name: 'forbidden' }
   }
   return true
 })

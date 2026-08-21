@@ -38,3 +38,6 @@ dist/
 .vite/
 *.local
 .codex-vite.*.log
+
+# One-off local data preparation artifacts
+/tmp/

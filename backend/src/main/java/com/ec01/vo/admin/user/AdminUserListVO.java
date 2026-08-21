@@ -1,5 +1,6 @@
 package com.ec01.vo.admin.user;
 
+import com.ec01.common.UserRole;
 import com.ec01.common.UserStatus;
 import lombok.Data;
 
@@ -14,6 +15,7 @@ public class AdminUserListVO {
     private String phone;
     private String avatarUrl;
     private UserStatus status;
+    private UserRole role;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

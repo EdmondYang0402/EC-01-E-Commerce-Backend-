@@ -4,6 +4,7 @@ import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
 import com.ec01.common.PageResult;
 import com.ec01.exception.GlobalExceptionHandler;
+import com.ec01.mapper.UserMapper;
 import com.ec01.security.JwtInterceptor;
 import com.ec01.service.ProductService;
 import com.ec01.vo.product.ProductDetailVO;
@@ -27,6 +28,7 @@ class ProductControllerTest {
     private ProductService productService;
     private JwtUtil jwtUtil;
     private LoginSessionService loginSessionService;
+    private UserMapper userMapper;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -34,7 +36,8 @@ class ProductControllerTest {
         productService = mock(ProductService.class);
         jwtUtil = mock(JwtUtil.class);
         loginSessionService = mock(LoginSessionService.class);
-        JwtInterceptor interceptor = new JwtInterceptor(jwtUtil, loginSessionService);
+        userMapper = mock(UserMapper.class);
+        JwtInterceptor interceptor = new JwtInterceptor(jwtUtil, loginSessionService, userMapper);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new ProductController(productService))
                 .addInterceptors(interceptor)
@@ -60,7 +63,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.records[0].id").value(1))
                 .andExpect(jsonPath("$.data.records[0].minPrice").value(499.00));
 
-        verifyNoInteractions(jwtUtil, loginSessionService);
+        verifyNoInteractions(jwtUtil, loginSessionService, userMapper);
     }
 
     @Test
@@ -75,7 +78,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.name").value("Chair"));
 
-        verifyNoInteractions(jwtUtil, loginSessionService);
+        verifyNoInteractions(jwtUtil, loginSessionService, userMapper);
     }
 
     @Test

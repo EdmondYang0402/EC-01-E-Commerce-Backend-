@@ -19,7 +19,8 @@ public interface UserMapper {
         email,
         phone,
         avatar_url,
-        status
+        status,
+        role
     )
     VALUES (
         #{username},
@@ -28,7 +29,8 @@ public interface UserMapper {
         #{email},
         #{phone},
         #{avatarUrl},
-        #{status}
+        #{status},
+        #{role}
     )
 """)
     @Options(useGeneratedKeys = true, keyProperty = "id")

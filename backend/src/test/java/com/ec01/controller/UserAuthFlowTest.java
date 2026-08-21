@@ -4,7 +4,10 @@ import com.ec01.auth.AuthService;
 import com.ec01.auth.AuthServiceImpl;
 import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
+import com.ec01.common.UserRole;
+import com.ec01.entity.User;
 import com.ec01.exception.GlobalExceptionHandler;
+import com.ec01.mapper.UserMapper;
 import com.ec01.security.JwtInterceptor;
 import com.ec01.security.UserContext;
 import com.ec01.service.UserService;
@@ -31,6 +34,7 @@ class UserAuthFlowTest {
 
     private JwtUtil jwtUtil;
     private LoginSessionService loginSessionService;
+    private UserMapper userMapper;
     private UserService userService;
     private AuthService authService;
     private MockMvc mockMvc;
@@ -39,9 +43,14 @@ class UserAuthFlowTest {
     void setUp() {
         jwtUtil = mock(JwtUtil.class);
         loginSessionService = mock(LoginSessionService.class);
+        userMapper = mock(UserMapper.class);
+        User activeUser = new User();
+        activeUser.setStatus(1);
+        activeUser.setRole(UserRole.USER);
+        when(userMapper.selectById(anyLong())).thenReturn(activeUser);
         userService = mock(UserService.class);
         authService = new AuthServiceImpl(userService);
-        JwtInterceptor interceptor = new JwtInterceptor(jwtUtil, loginSessionService);
+        JwtInterceptor interceptor = new JwtInterceptor(jwtUtil, loginSessionService, userMapper);
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new UserController(userService), new AuthController(authService))
@@ -116,6 +125,7 @@ class UserAuthFlowTest {
         when(jwtUtil.parseSessionId("good-token")).thenReturn("session-1");
         when(loginSessionService.getUserId("session-1"))
                 .thenAnswer(invocation -> active.get() ? 7L : null);
+        when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
         doAnswer(invocation -> {
             active.set(false);
             return null;
@@ -143,10 +153,37 @@ class UserAuthFlowTest {
         verify(userService).register(any());
     }
 
+    @Test
+    void disabledUserExistingTokenIsRejected() throws Exception {
+        when(jwtUtil.validateToken("good-token")).thenReturn(true);
+        when(jwtUtil.parseUserId("good-token")).thenReturn(7L);
+        when(jwtUtil.parseSessionId("good-token")).thenReturn("session-1");
+        when(loginSessionService.getUserId("session-1")).thenReturn(7L);
+        User disabledUser = activeUser(7L);
+        disabledUser.setStatus(0);
+        when(userMapper.selectById(7L)).thenReturn(disabledUser);
+
+        mockMvc.perform(get("/api/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+
+        verifyNoInteractions(userService);
+    }
+
     private void mockValidToken() {
         when(jwtUtil.validateToken("good-token")).thenReturn(true);
         when(jwtUtil.parseUserId("good-token")).thenReturn(7L);
         when(jwtUtil.parseSessionId("good-token")).thenReturn("session-1");
         when(loginSessionService.getUserId("session-1")).thenReturn(7L);
+        when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
+    }
+
+    private User activeUser(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setStatus(1);
+        user.setRole(UserRole.USER);
+        return user;
     }
 }

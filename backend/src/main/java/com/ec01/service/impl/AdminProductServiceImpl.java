@@ -25,13 +25,17 @@ import java.util.List;
 
 @Service
 public class AdminProductServiceImpl implements AdminProductService {
-    private static final String NOT_IMPLEMENTED_MESSAGE = "后台商品管理业务尚未实现";
     private final ProductMapper productMapper;
     private final SkuMapper skuMapper;
+    private final ProductServiceImpl productService;
 
-    public AdminProductServiceImpl(ProductMapper productMapper, SkuMapper skuMapper) {
+    public AdminProductServiceImpl(
+            ProductMapper productMapper,
+            SkuMapper skuMapper,
+            ProductServiceImpl productService) {
         this.productMapper = productMapper;
         this.skuMapper = skuMapper;
+        this.productService = productService;
     }
 
     @Override
@@ -71,9 +75,13 @@ public class AdminProductServiceImpl implements AdminProductService {
 
     @Override
     public Long createProduct(ProductCreateDTO dto) {
+        if (dto == null || dto.getName() == null || dto.getName().isBlank()) {
+            throw new BusinessException(400, "商品名称不能为空");
+        }
+        productService.validateProductCategory(dto.getCategoryId());
         Product product = new Product();
 
-        product.setName(dto.getName());
+        product.setName(dto.getName().trim());
         product.setSubtitle(dto.getSubtitle());
         product.setDescription(dto.getDescription());
         product.setCoverUrl(dto.getCoverUrl());
@@ -92,6 +100,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         if (dto == null || dto.getName() == null || dto.getName().isBlank()) {
             throw new BusinessException(400, "商品基础信息不合法");
         }
+        productService.validateProductCategory(dto.getCategoryId());
         Product product = requireProduct(productId);
         product.setName(dto.getName().trim());
         product.setSubtitle(dto.getSubtitle());
@@ -105,30 +114,53 @@ public class AdminProductServiceImpl implements AdminProductService {
 
     @Override
     public void changeStatus(Long productId, ProductStatusUpdateDTO dto) {
-        throw notImplemented();
+        if (dto == null || dto.getStatus() == null) {
+            throw new BusinessException(400, "商品状态不能为空");
+        }
+        Product product = requireProduct(productId);
+        byte targetStatus = dto.getStatus().getCode();
+        if (product.getStatus() == targetStatus) {
+            return;
+        }
+        if (dto.getStatus() == ProductStatus.ON_SHELF) {
+            boolean hasEnabledSku = skuMapper.selectAllByProductId(productId).stream()
+                    .anyMatch(sku -> sku.getStatus() != null
+                            && sku.getStatus() == SkuStatus.ENABLED.getCode());
+            if (!hasEnabledSku) {
+                throw new BusinessException(409, "商品至少需要一个已启用SKU才能上架");
+            }
+        }
+        if (productMapper.updateStatus(productId, targetStatus) <= 0) {
+            throw new BusinessException(500, "商品状态更新失败");
+        }
     }
 
     @Override
     public Long addSku(Long productId, SkuCreateDTO dto) {
-
-        Product product = productMapper.selectById(productId);
-
-        if (product == null) {
-            throw new BusinessException("商品不存在");
+        requireProduct(productId);
+        if (dto == null || dto.getSkuCode() == null || dto.getSkuCode().isBlank()
+                || dto.getSpecJson() == null || dto.getSpecJson().isBlank()
+                || dto.getPrice() == null || dto.getPrice().signum() <= 0
+                || dto.getStock() == null || dto.getStock() < 0) {
+            throw new BusinessException(400, "SKU信息不合法");
+        }
+        if (skuMapper.selectBySkuCode(dto.getSkuCode().trim()) != null) {
+            throw new BusinessException(409, "SKU编码已存在");
         }
 
-        if (skuMapper.selectByProductIdAndSpecJson(productId, dto.getSpecJson()) != null) {
-            throw new BusinessException("该SKU规格已存在");
+        String specJson = dto.getSpecJson().trim();
+        if (skuMapper.selectByProductIdAndSpecJson(productId, specJson) != null) {
+            throw new BusinessException(409, "同一商品下该SKU规格已存在");
         }
 
         Sku sku = new Sku();
 
         sku.setProductId(productId);
-        sku.setSkuCode(dto.getSkuCode());
-        sku.setSpecJson(dto.getSpecJson());
+        sku.setSkuCode(dto.getSkuCode().trim());
+        sku.setSpecJson(specJson);
         sku.setPrice(dto.getPrice());
         sku.setStock(dto.getStock());
-        sku.setStatus((byte) 1);
+        sku.setStatus(SkuStatus.ENABLED.getCode());
 
         if (skuMapper.insert(sku) <= 0) {
             throw new BusinessException("SKU创建失败");
@@ -141,7 +173,7 @@ public class AdminProductServiceImpl implements AdminProductService {
     public void updateSku(Long skuId, SkuUpdateDTO dto) {
         if (skuId == null || skuId <= 0 || dto == null
                 || dto.getSpecJson() == null || dto.getSpecJson().isBlank()
-                || dto.getPrice() == null || dto.getPrice().signum() < 0
+                || dto.getPrice() == null || dto.getPrice().signum() <= 0
                 || dto.getStock() == null || dto.getStock() < 0) {
             throw new BusinessException(400, "SKU基础信息不合法");
         }
@@ -164,11 +196,31 @@ public class AdminProductServiceImpl implements AdminProductService {
 
     @Override
     public void changeSkuStatus(Long skuId, SkuStatusUpdateDTO dto) {
-        throw notImplemented();
-    }
-
-    private BusinessException notImplemented() {
-        return new BusinessException(501, NOT_IMPLEMENTED_MESSAGE);
+        if (skuId == null || skuId <= 0 || dto == null || dto.getStatus() == null) {
+            throw new BusinessException(400, "SKU状态参数不合法");
+        }
+        Sku sku = skuMapper.selectById(skuId);
+        if (sku == null) {
+            throw new BusinessException(404, "SKU不存在");
+        }
+        Product product = requireProduct(sku.getProductId());
+        byte targetStatus = dto.getStatus().getCode();
+        if (sku.getStatus() == targetStatus) {
+            return;
+        }
+        if (dto.getStatus() == SkuStatus.DISABLED
+                && product.getStatus() == ProductStatus.ON_SHELF.getCode()) {
+            long enabledCount = skuMapper.selectAllByProductId(product.getId()).stream()
+                    .filter(item -> item.getStatus() != null
+                            && item.getStatus() == SkuStatus.ENABLED.getCode())
+                    .count();
+            if (enabledCount <= 1) {
+                throw new BusinessException(409, "上架商品必须保留至少一个已启用SKU");
+            }
+        }
+        if (skuMapper.updateStatus(skuId, targetStatus) <= 0) {
+            throw new BusinessException(500, "SKU状态更新失败");
+        }
     }
 
     private void validatePage(ProductAdminQueryDTO dto) {

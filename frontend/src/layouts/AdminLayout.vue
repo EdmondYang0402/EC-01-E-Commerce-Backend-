@@ -12,6 +12,7 @@ const menuOpen = ref(false)
 
 const navigation = [
   { label: '商品管理', caption: 'Products', to: '/admin/products', mark: 'P' },
+  { label: '分类管理', caption: 'Categories', to: '/admin/categories', mark: 'C' },
   { label: '订单管理', caption: 'Orders', to: '/admin/orders', mark: 'O' },
   { label: '用户管理', caption: 'Users', to: '/admin/users', mark: 'U' },
 ]

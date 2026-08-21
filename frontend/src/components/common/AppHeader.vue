@@ -19,7 +19,7 @@ const navigation = [
 
 const auth = useAuthStore()
 const router = useRouter()
-const { isAuthenticated } = storeToRefs(auth)
+const { isAuthenticated, isAdmin } = storeToRefs(auth)
 const cart = useCartStore()
 const { itemCount } = storeToRefs(cart)
 const locale = useLocaleStore()
@@ -69,6 +69,8 @@ watch(isAuthenticated, async (authenticated) => {
         <RouterLink class="account-action" :to="isAuthenticated ? '/profile' : '/login'" :aria-label="t('header.account')">
           <UiIcon name="user" />
         </RouterLink>
+        <RouterLink v-if="isAuthenticated" class="text-action settings-action" to="/profile#security">{{ t('header.settings') }}</RouterLink>
+        <RouterLink v-if="isAdmin" class="text-action admin-action" to="/admin">{{ t('header.admin') }}</RouterLink>
         <RouterLink v-if="isAuthenticated" class="text-action" to="/orders">{{ t('nav.orders') }}</RouterLink>
         <RouterLink v-else class="text-action" to="/login">{{ t('header.login') }}</RouterLink>
         <RouterLink class="cart-action" to="/cart" :aria-label="t('header.cart')">
@@ -111,5 +113,7 @@ watch(isAuthenticated, async (authenticated) => {
   .site-header { height: 60px; }
   .header-actions > button:first-child { display: none; }
   .language-picker select { width: 58px; padding-right: 4px; }
+  .settings-action { display: none; }
+  .admin-action { display: none; }
 }
 </style>

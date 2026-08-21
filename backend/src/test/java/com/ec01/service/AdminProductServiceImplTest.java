@@ -5,13 +5,16 @@ import com.ec01.common.ProductStatus;
 import com.ec01.common.SkuStatus;
 import com.ec01.dto.admin.product.ProductAdminQueryDTO;
 import com.ec01.dto.admin.product.ProductUpdateDTO;
+import com.ec01.dto.admin.product.ProductStatusUpdateDTO;
 import com.ec01.dto.admin.product.SkuUpdateDTO;
+import com.ec01.dto.admin.product.SkuStatusUpdateDTO;
 import com.ec01.entity.Product;
 import com.ec01.entity.Sku;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.mapper.SkuMapper;
 import com.ec01.service.impl.AdminProductServiceImpl;
+import com.ec01.service.impl.ProductServiceImpl;
 import com.ec01.vo.admin.product.AdminProductDetailVO;
 import com.ec01.vo.admin.product.AdminProductListVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +34,15 @@ import static org.mockito.Mockito.when;
 class AdminProductServiceImplTest {
     private ProductMapper productMapper;
     private SkuMapper skuMapper;
+    private ProductServiceImpl productService;
     private AdminProductServiceImpl service;
 
     @BeforeEach
     void setUp() {
         productMapper = mock(ProductMapper.class);
         skuMapper = mock(SkuMapper.class);
-        service = new AdminProductServiceImpl(productMapper, skuMapper);
+        productService = mock(ProductServiceImpl.class);
+        service = new AdminProductServiceImpl(productMapper, skuMapper, productService);
     }
 
     @Test
@@ -123,6 +128,68 @@ class AdminProductServiceImplTest {
                 BusinessException.class, () -> service.getProductDetail(99L));
 
         assertEquals(404, exception.getCode());
+    }
+
+    @Test
+    void productRequiresEnabledSkuBeforeGoingOnShelf() {
+        Product product = product(9L, (byte) 0);
+        when(productMapper.selectById(9L)).thenReturn(product);
+        when(skuMapper.selectAllByProductId(9L)).thenReturn(List.of(
+                sku(11L, 9L, (byte) 0, "disabled")));
+        ProductStatusUpdateDTO dto = new ProductStatusUpdateDTO();
+        dto.setStatus(ProductStatus.ON_SHELF);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.changeStatus(9L, dto));
+
+        assertEquals(409, exception.getCode());
+        verify(productMapper, never()).updateStatus(9L, (byte) 1);
+    }
+
+    @Test
+    void productWithEnabledSkuCanGoOnShelf() {
+        Product product = product(9L, (byte) 0);
+        when(productMapper.selectById(9L)).thenReturn(product);
+        when(skuMapper.selectAllByProductId(9L)).thenReturn(List.of(
+                sku(11L, 9L, (byte) 1, "enabled")));
+        when(productMapper.updateStatus(9L, (byte) 1)).thenReturn(1);
+        ProductStatusUpdateDTO dto = new ProductStatusUpdateDTO();
+        dto.setStatus(ProductStatus.ON_SHELF);
+
+        service.changeStatus(9L, dto);
+
+        verify(productMapper).updateStatus(9L, (byte) 1);
+    }
+
+    @Test
+    void cannotDisableLastEnabledSkuOfOnShelfProduct() {
+        Product product = product(9L, (byte) 1);
+        Sku sku = sku(11L, 9L, (byte) 1, "enabled");
+        when(skuMapper.selectById(11L)).thenReturn(sku);
+        when(productMapper.selectById(9L)).thenReturn(product);
+        when(skuMapper.selectAllByProductId(9L)).thenReturn(List.of(sku));
+        SkuStatusUpdateDTO dto = new SkuStatusUpdateDTO();
+        dto.setStatus(SkuStatus.DISABLED);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.changeSkuStatus(11L, dto));
+
+        assertEquals(409, exception.getCode());
+        verify(skuMapper, never()).updateStatus(11L, (byte) 0);
+    }
+
+    @Test
+    void skuUpdateRejectsZeroPriceAtServiceBoundary() {
+        SkuUpdateDTO dto = new SkuUpdateDTO();
+        dto.setSpecJson("valid");
+        dto.setPrice(BigDecimal.ZERO);
+        dto.setStock(0);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.updateSku(11L, dto));
+
+        assertEquals(400, exception.getCode());
+        verify(skuMapper, never()).selectById(11L);
     }
 
     private Product product(Long id, byte status) {

@@ -2,7 +2,10 @@ package com.ec01.security;
 
 import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
+import com.ec01.common.UserRole;
+import com.ec01.entity.User;
 import com.ec01.exception.UnauthorizedException;
+import com.ec01.mapper.UserMapper;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,11 +22,13 @@ import java.util.Objects;
 public class JwtInterceptor implements HandlerInterceptor {
 
     public static final String AUTH_SESSION_ID_ATTRIBUTE = "com.ec01.auth.sessionId";
+    public static final String AUTH_USER_ROLE_ATTRIBUTE = "com.ec01.auth.userRole";
 
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
     private final LoginSessionService loginSessionService;
+    private final UserMapper userMapper;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -56,8 +61,15 @@ public class JwtInterceptor implements HandlerInterceptor {
             throw new UnauthorizedException();
         }
 
+        User user = userMapper.selectById(jwtUserId);
+        if (user == null || user.getStatus() != 1) {
+            throw new UnauthorizedException();
+        }
+        UserRole role = user.getRole() == null ? UserRole.USER : user.getRole();
+
         UserContext.set(jwtUserId);
         request.setAttribute(AUTH_SESSION_ID_ATTRIBUTE, sessionId);
+        request.setAttribute(AUTH_USER_ROLE_ATTRIBUTE, role);
         return true;
     }
 

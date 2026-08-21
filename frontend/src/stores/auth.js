@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => Boolean(state.token),
+    isAdmin: (state) => state.profile?.role === 'ADMIN',
     displayName: (state) => state.profile?.nickname || state.profile?.username || 'Account',
   },
 
@@ -47,6 +48,11 @@ export const useAuthStore = defineStore('auth', {
     async updateProfile(payload) {
       await authApi.updateProfile(payload)
       return this.fetchProfile()
+    },
+
+    async changePassword(payload) {
+      await authApi.changePassword(payload)
+      this.clearSession()
     },
 
     async logout() {

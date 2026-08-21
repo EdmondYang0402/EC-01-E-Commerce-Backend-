@@ -7,6 +7,7 @@ import com.ec01.dto.admin.user.UserStatusUpdateDTO;
 import com.ec01.entity.User;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.UserMapper;
+import com.ec01.security.UserContext;
 import com.ec01.service.AdminUserService;
 import com.ec01.vo.admin.user.AdminUserListVO;
 import lombok.RequiredArgsConstructor;
@@ -40,8 +41,16 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (userId == null || userId <= 0 || dto == null || dto.getStatus() == null) {
             throw new BusinessException(400, "用户状态参数不合法");
         }
-        if (userMapper.selectById(userId) == null) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
             throw new BusinessException(404, "用户不存在");
+        }
+        Long currentUserId = UserContext.get();
+        if (dto.getStatus() == UserStatus.DISABLED && userId.equals(currentUserId)) {
+            throw new BusinessException(400, "管理员不能禁用自己的账号");
+        }
+        if (user.getStatus() == dto.getStatus().getCode()) {
+            return;
         }
         if (userMapper.updateStatus(userId, dto.getStatus().getCode()) <= 0) {
             throw new BusinessException(500, "用户状态更新失败");
@@ -57,6 +66,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         vo.setPhone(user.getPhone());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setStatus(toUserStatus(user.getStatus()));
+        vo.setRole(user.getRole());
         vo.setCreateTime(user.getCreateTime());
         vo.setUpdateTime(user.getUpdateTime());
         return vo;

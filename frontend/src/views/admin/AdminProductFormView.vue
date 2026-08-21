@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminProductApi } from '../../services/adminProducts'
+import { adminCategoryApi } from '../../services/categories'
 import { errorMessage } from '../../services/http'
 
 const route = useRoute()
@@ -10,32 +11,47 @@ const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
-const form = reactive({ name: '', subtitle: '', coverUrl: '', description: '', categoryId: '' })
+const categoryOptions = ref([])
+const form = reactive({ name: '', subtitle: '', coverUrl: '', description: '', rootCategoryId: '', categoryId: '' })
 const editing = computed(() => route.name === 'admin-product-edit')
 const productId = computed(() => Number(route.params.productId))
+const rootCategories = computed(() => categoryOptions.value.filter((item) =>
+  item.parentId == null && item.status === 'ENABLED'))
+const childCategories = computed(() => categoryOptions.value.filter((item) =>
+  item.parentId === Number(form.rootCategoryId)
+  && (item.status === 'ENABLED' || item.id === Number(form.categoryId))))
 
-const fill = (product = {}) => Object.assign(form, {
+const fill = (product = {}) => {
+  const child = categoryOptions.value.find((item) => item.id === product.categoryId)
+  Object.assign(form, {
   name: product.name || '', subtitle: product.subtitle || '', coverUrl: product.coverUrl || '',
-  description: product.description || '', categoryId: product.categoryId || '',
-})
+  description: product.description || '', rootCategoryId: child?.parentId || '',
+  categoryId: product.categoryId || '',
+  })
+}
 
 const load = async () => {
-  if (!editing.value) { fill(); return }
   loading.value = true
   error.value = ''
-  try { fill(await adminProductApi.getDetail(productId.value)) }
+  try {
+    categoryOptions.value = await adminCategoryApi.getAll() || []
+    fill(editing.value ? await adminProductApi.getDetail(productId.value) : {})
+  }
   catch (requestError) { error.value = errorMessage(requestError, '商品信息加载失败') }
   finally { loading.value = false }
 }
 
+const changeRoot = () => { form.categoryId = '' }
+
 const submit = async () => {
   if (!form.name.trim()) { ElMessage.warning('请输入商品名称'); return }
+  if (!form.rootCategoryId || !form.categoryId) { ElMessage.warning('请选择一级分类和二级分类'); return }
   saving.value = true
   try {
     const payload = {
       name: form.name.trim(), subtitle: form.subtitle.trim() || null,
       coverUrl: form.coverUrl.trim() || null, description: form.description.trim() || null,
-      categoryId: form.categoryId ? Number(form.categoryId) : null,
+      categoryId: Number(form.categoryId),
     }
     if (editing.value) {
       await adminProductApi.update(productId.value, payload)
@@ -44,7 +60,7 @@ const submit = async () => {
     } else {
       const id = await adminProductApi.create(payload)
       ElMessage.success('商品创建成功，默认保持下架状态')
-      await router.push(`/admin/products/${id}`)
+      await router.push({ path: '/admin/products', query: { created: id } })
     }
   } catch (requestError) { ElMessage.error(errorMessage(requestError, editing.value ? '商品更新失败' : '商品创建失败')) }
   finally { saving.value = false }
@@ -65,7 +81,8 @@ watch(() => route.fullPath, load)
     <form v-else class="admin-form" @submit.prevent="submit">
       <div class="admin-form__grid">
         <label class="admin-field"><span>商品名称 *</span><input v-model="form.name" maxlength="120" required placeholder="例如：弧形休闲椅" /></label>
-        <label class="admin-field"><span>分类 ID</span><input v-model="form.categoryId" min="1" type="number" placeholder="可选" /></label>
+        <label class="admin-field"><span>一级分类 *</span><select v-model="form.rootCategoryId" required @change="changeRoot"><option value="" disabled>请选择一级分类</option><option v-for="root in rootCategories" :key="root.id" :value="root.id">{{ root.name }}</option></select></label>
+        <label class="admin-field"><span>二级分类 *</span><select v-model="form.categoryId" :disabled="!form.rootCategoryId" required><option value="" disabled>请选择二级分类</option><option v-for="child in childCategories" :key="child.id" :value="child.id">{{ child.name }}{{ child.status === 'DISABLED' ? '（已禁用）' : '' }}</option></select></label>
         <label class="admin-field admin-field--full"><span>副标题</span><input v-model="form.subtitle" maxlength="255" placeholder="一句简洁的商品描述" /></label>
         <label class="admin-field admin-field--full"><span>封面图片 URL</span><input v-model="form.coverUrl" maxlength="500" type="url" placeholder="https://…" /></label>
         <label class="admin-field admin-field--full"><span>详细描述</span><textarea v-model="form.description" placeholder="材质、设计理念与使用场景" /></label>

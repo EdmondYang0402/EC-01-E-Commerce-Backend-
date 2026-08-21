@@ -7,9 +7,11 @@ import com.ec01.dto.admin.user.UserStatusUpdateDTO;
 import com.ec01.entity.User;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.UserMapper;
+import com.ec01.security.UserContext;
 import com.ec01.service.impl.AdminUserServiceImpl;
 import com.ec01.vo.admin.user.AdminUserListVO;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -32,6 +34,11 @@ class AdminUserServiceImplTest {
         service = new AdminUserServiceImpl(userMapper);
     }
 
+    @AfterEach
+    void tearDown() {
+        UserContext.remove();
+    }
+
     @Test
     void userPageUsesFiltersAndDoesNotExposePasswordField() {
         AdminUserQueryDTO dto = new AdminUserQueryDTO();
@@ -41,6 +48,7 @@ class AdminUserServiceImplTest {
         dto.setStatus(UserStatus.NORMAL);
         User user = new User();
         user.setId(5L);
+        user.setStatus(1);
         user.setUsername("alice");
         user.setPassword("encoded-secret");
         user.setStatus(1);
@@ -59,6 +67,7 @@ class AdminUserServiceImplTest {
     void statusUpdateOnlyCallsDedicatedMapperMethod() {
         User user = new User();
         user.setId(5L);
+        user.setStatus(1);
         when(userMapper.selectById(5L)).thenReturn(user);
         when(userMapper.updateStatus(5L, 0)).thenReturn(1);
         UserStatusUpdateDTO dto = new UserStatusUpdateDTO();
@@ -68,6 +77,23 @@ class AdminUserServiceImplTest {
 
         verify(userMapper).selectById(5L);
         verify(userMapper).updateStatus(5L, 0);
+    }
+
+    @Test
+    void administratorCannotDisableOwnAccount() {
+        User user = new User();
+        user.setId(5L);
+        user.setStatus(1);
+        when(userMapper.selectById(5L)).thenReturn(user);
+        UserStatusUpdateDTO dto = new UserStatusUpdateDTO();
+        dto.setStatus(UserStatus.DISABLED);
+        UserContext.set(5L);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.changeUserStatus(5L, dto));
+
+        assertEquals(400, exception.getCode());
+        verify(userMapper, org.mockito.Mockito.never()).updateStatus(5L, 0);
     }
 
     @Test

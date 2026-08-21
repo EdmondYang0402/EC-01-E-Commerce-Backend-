@@ -1,5 +1,6 @@
 package com.ec01.entity;
 
+import com.ec01.common.UserRole;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,7 @@ public class User {
     private String phone;
     private String avatarUrl;
     private int status;   //1正常 0异常
+    private UserRole role;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

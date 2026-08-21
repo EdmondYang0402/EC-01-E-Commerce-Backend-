@@ -18,11 +18,29 @@ CREATE TABLE IF NOT EXISTS `users` (
     `phone` VARCHAR(30) NULL,
     `avatar_url` VARCHAR(500) NULL,
     `status` TINYINT NOT NULL DEFAULT 1,
+    `role` VARCHAR(16) NOT NULL DEFAULT 'USER',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_username` (`username`),
-    CONSTRAINT `chk_user_status` CHECK (`status` IN (0, 1))
+    KEY `idx_user_role_status` (`role`, `status`),
+    CONSTRAINT `chk_user_status` CHECK (`status` IN (0, 1)),
+    CONSTRAINT `chk_user_role` CHECK (`role` IN ('USER', 'ADMIN'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `category` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(80) NOT NULL,
+    `parent_id` BIGINT NULL,
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `status` TINYINT NOT NULL DEFAULT 1,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_category_parent_sort` (`parent_id`, `sort_order`),
+    KEY `idx_category_status` (`status`),
+    CONSTRAINT `chk_category_sort_order` CHECK (`sort_order` BETWEEN 0 AND 9999),
+    CONSTRAINT `chk_category_status` CHECK (`status` IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `product` (

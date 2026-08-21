@@ -70,6 +70,23 @@ class AdminProductDtoValidationTest {
     }
 
     @Test
+    void skuCreateAndUpdateRequirePositivePrice() {
+        SkuCreateDTO create = new SkuCreateDTO();
+        create.setSkuCode("CHAIR-ZERO");
+        create.setSpecJson("{\"color\":\"white\"}");
+        create.setPrice(BigDecimal.ZERO);
+        create.setStock(0);
+
+        SkuUpdateDTO update = new SkuUpdateDTO();
+        update.setSpecJson(create.getSpecJson());
+        update.setPrice(BigDecimal.ZERO);
+        update.setStock(0);
+
+        assertEquals(Set.of("price"), properties(validator.validate(create)));
+        assertEquals(Set.of("price"), properties(validator.validate(update)));
+    }
+
+    @Test
     void adminQueryUsesPageDefaultsAndEnforcesSizeLimit() {
         ProductAdminQueryDTO dto = new ProductAdminQueryDTO();
         assertEquals(1, dto.getPage());

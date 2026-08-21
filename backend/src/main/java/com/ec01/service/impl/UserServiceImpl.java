@@ -2,6 +2,7 @@ package com.ec01.service.impl;
 
 import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
+import com.ec01.common.UserRole;
 import com.ec01.dto.user.ChangePasswordDTO;
 import com.ec01.dto.user.UserLoginDTO;
 import com.ec01.dto.user.UserRegisterDTO;
@@ -57,6 +58,7 @@ public class UserServiceImpl implements UserService {
         user.setUsername(dto.getUsername());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(1);
+        user.setRole(UserRole.USER);
 
         try {
             if (userMapper.insert(user) <= 0) {
@@ -91,6 +93,7 @@ public class UserServiceImpl implements UserService {
         UserLoginVO userLoginVO = new UserLoginVO();
         userLoginVO.setUserId(user.getId());
         userLoginVO.setToken(token);
+        userLoginVO.setRole(user.getRole());
         return userLoginVO;
     }
 
@@ -109,6 +112,7 @@ public class UserServiceImpl implements UserService {
         profile.setEmail(user.getEmail());
         profile.setPhone(user.getPhone());
         profile.setAvatarUrl(user.getAvatarUrl());
+        profile.setRole(user.getRole());
         return profile;
     }
 

@@ -2,6 +2,7 @@ package com.ec01.service;
 
 import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
+import com.ec01.common.UserRole;
 import com.ec01.dto.user.ChangePasswordDTO;
 import com.ec01.dto.user.UserLoginDTO;
 import com.ec01.dto.user.UserRegisterDTO;
@@ -64,6 +65,7 @@ class UserServiceImplTest {
         assertEquals("encoded", captor.getValue().getPassword());
         assertNotEquals("Password123", captor.getValue().getPassword());
         assertEquals(1, captor.getValue().getStatus());
+        assertEquals(UserRole.USER, captor.getValue().getRole());
         verify(passwordEncoder).encode("Password123");
     }
 
@@ -133,6 +135,7 @@ class UserServiceImplTest {
 
         assertEquals(7L, result.getUserId());
         assertEquals("jwt-token", result.getToken());
+        assertEquals(UserRole.USER, result.getRole());
         verify(loginSessionService).createSession(7L);
         verify(jwtUtil).generateToken(7L, "session-1");
     }
@@ -193,6 +196,7 @@ class UserServiceImplTest {
         assertEquals("alice@example.com", profile.getEmail());
         assertEquals("13800138000", profile.getPhone());
         assertEquals("https://example.com/avatar.png", profile.getAvatarUrl());
+        assertEquals(UserRole.USER, profile.getRole());
         assertThrows(NoSuchFieldException.class,
                 () -> UserProfileVO.class.getDeclaredField("password"));
         verify(userMapper).selectById(7L);
@@ -305,6 +309,7 @@ class UserServiceImplTest {
         user.setId(id);
         user.setStatus(status);
         user.setPassword(password);
+        user.setRole(UserRole.USER);
         return user;
     }
 }

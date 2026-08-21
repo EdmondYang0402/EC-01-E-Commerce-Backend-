@@ -20,4 +20,8 @@ export const authApi = {
   async updateProfile(payload) {
     return responseData(await http.put('/users/me', payload))
   },
+
+  async changePassword(payload) {
+    return responseData(await http.put('/users/me/password', payload))
+  },
 }

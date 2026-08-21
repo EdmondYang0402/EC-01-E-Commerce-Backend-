@@ -58,12 +58,12 @@ class AdminProductControllerTest {
                 .andExpect(jsonPath("$.data.id").value(9));
         mockMvc.perform(post("/api/admin/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Chair\"}"))
+                        .content("{\"name\":\"Chair\",\"categoryId\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(9));
         mockMvc.perform(put("/api/admin/products/9")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Updated chair\"}"))
+                        .content("{\"name\":\"Updated chair\",\"categoryId\":2}"))
                 .andExpect(status().isOk());
         mockMvc.perform(patch("/api/admin/products/9/status")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -2,7 +2,10 @@ package com.ec01.controller;
 
 import com.ec01.auth.JwtUtil;
 import com.ec01.auth.LoginSessionService;
+import com.ec01.common.UserRole;
+import com.ec01.entity.User;
 import com.ec01.exception.GlobalExceptionHandler;
+import com.ec01.mapper.UserMapper;
 import com.ec01.security.JwtInterceptor;
 import com.ec01.service.CartService;
 import com.ec01.vo.cart.CartItemVO;
@@ -26,6 +29,7 @@ class CartControllerTest {
     private CartService cartService;
     private JwtUtil jwtUtil;
     private LoginSessionService loginSessionService;
+    private UserMapper userMapper;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -33,9 +37,10 @@ class CartControllerTest {
         cartService = mock(CartService.class);
         jwtUtil = mock(JwtUtil.class);
         loginSessionService = mock(LoginSessionService.class);
+        userMapper = mock(UserMapper.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new CartController(cartService))
-                .addInterceptors(new JwtInterceptor(jwtUtil, loginSessionService))
+                .addInterceptors(new JwtInterceptor(jwtUtil, loginSessionService, userMapper))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -103,5 +108,14 @@ class CartControllerTest {
         when(jwtUtil.parseUserId("good-token")).thenReturn(7L);
         when(jwtUtil.parseSessionId("good-token")).thenReturn("session-1");
         when(loginSessionService.getUserId("session-1")).thenReturn(7L);
+        when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
+    }
+
+    private User activeUser(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setStatus(1);
+        user.setRole(UserRole.USER);
+        return user;
     }
 }

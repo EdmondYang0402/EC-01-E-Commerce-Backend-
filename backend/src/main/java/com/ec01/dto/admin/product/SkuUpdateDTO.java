@@ -16,7 +16,7 @@ public class SkuUpdateDTO {
     private String specJson;
 
     @NotNull(message = "SKU价格不能为空")
-    @DecimalMin(value = "0.00", message = "SKU价格不能为负数")
+    @DecimalMin(value = "0.00", inclusive = false, message = "SKU价格必须大于0")
     private BigDecimal price;
 
     @NotNull(message = "SKU库存不能为空")

@@ -7,6 +7,7 @@ import com.ec01.entity.Product;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.mapper.SkuMapper;
+import com.ec01.service.CategoryService;
 import com.ec01.service.ProductService;
 import com.ec01.vo.product.ProductDetailVO;
 import com.ec01.vo.product.ProductListVO;
@@ -20,6 +21,7 @@ import java.util.List;
 public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
     private final SkuMapper skuMapper;
+    private final CategoryService categoryService;
 
     @Override
     public PageResult<ProductListVO> getProductPage(ProductQueryDTO dto) {
@@ -29,6 +31,10 @@ public class ProductServiceImpl implements ProductService {
         }
 
         String keyword = normalizeKeyword(dto.getKeyword());
+        if (dto.getCategoryId() != null) {
+            return categoryService.getProductsByCategory(
+                    dto.getCategoryId(), dto.getPage(), dto.getSize());
+        }
         long offset = (long) (dto.getPage() - 1) * dto.getSize();
         List<ProductListVO> records = productMapper.selectProductPage(
                 keyword, dto.getCategoryId(), offset, dto.getSize());
@@ -72,5 +78,10 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         return keyword.trim();
+    }
+
+    void validateProductCategory(Long categoryId) {
+        // TODO 用户练习 3：校验分类存在、处于可用状态，并且是二级分类。
+        // CategoryMapper.selectById(categoryId) 已准备；此方法由 Admin Product 新增/编辑调用。
     }
 }
