@@ -4,7 +4,7 @@
 -- This file is intentionally not wired into Spring Boot startup.
 --
 -- Product category_id maps to the 14 second-level categories seeded below.
--- Root distribution: 电子产品 / 电脑周边 / 服装鞋包 / 家居生活 / 运动户外 / 办公通勤.
+-- Category distribution: 6 root categories and 20 second-level categories.
 --
 -- Inventory distribution across 300 SKUs:
 --   normal stock (10-200): 240
@@ -27,7 +27,7 @@ DELETE FROM `product`
 WHERE `id` BETWEEN 100001 AND 100100
   AND `cover_url` LIKE '%seed=ec01%';
 
--- Fixed two-level category seed. IDs 1-14 are purchasable second-level categories;
+-- Fixed two-level category seed. IDs 1-20 are purchasable second-level categories;
 -- IDs 101-106 are navigation-only first-level categories.
 INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `status`) VALUES
 (101, '电子产品', NULL, 10, 1),
@@ -35,21 +35,27 @@ INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `status`) VALUE
 (103, '服装鞋包', NULL, 30, 1),
 (104, '家居生活', NULL, 40, 1),
 (105, '运动户外', NULL, 50, 1),
-(106, '办公通勤', NULL, 60, 1),
-(1, '电脑与数码', 101, 10, 1),
+(106, '办公通勤', NULL, 60, 0),
+(1, '电脑与主机', 101, 10, 1),
 (2, '手机配件', 101, 20, 1),
 (4, '显示器', 101, 30, 1),
 (5, '耳机与音频', 101, 40, 1),
+(15, '存储与智能设备', 101, 50, 1),
 (3, '键盘鼠标', 102, 10, 1),
 (14, '游戏周边', 102, 20, 0),
-(9, '服装', 103, 10, 1),
+(16, '网络与扩展', 102, 30, 1),
+(9, '上衣与裤装', 103, 10, 1),
 (10, '鞋类', 103, 20, 1),
 (11, '背包与箱包', 103, 30, 1),
+(17, '服饰配件', 103, 40, 1),
 (6, '家用电器', 104, 10, 1),
 (7, '生活用品', 104, 20, 1),
 (12, '家居', 104, 30, 1),
+(18, '清洁与收纳', 104, 40, 1),
 (13, '运动用品', 105, 10, 1),
-(8, '办公用品', 106, 10, 1)
+(19, '户外运动', 105, 20, 1),
+(8, '文具纸品', 106, 10, 1),
+(20, '桌面办公', 106, 20, 1)
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `parent_id` = VALUES(`parent_id`),
@@ -160,6 +166,21 @@ INSERT INTO `product` (
 (100098, '磁吸可编程宏键盘', '游戏周边 · 精选材质 · 本地开发商品', '磁吸可编程宏键盘，适用于游戏周边常见使用场景。规格、价格、库存与状态用于 EC-01 本地开发联调，不代表真实品牌或商家商品。', 14, 'https://placehold.co/800x800/F5F2EC/151515?text=Gaming&seed=ec01', 1, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY)),
 (100099, '大尺寸防滑游戏鼠标垫', '游戏周边 · 精选材质 · 本地开发商品', '大尺寸防滑游戏鼠标垫，适用于游戏周边常见使用场景。规格、价格、库存与状态用于 EC-01 本地开发联调，不代表真实品牌或商家商品。', 14, 'https://placehold.co/800x800/F5F2EC/151515?text=Gaming&seed=ec01', 1, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)),
 (100100, '掌机便携收纳保护盒', '游戏周边 · 精选材质 · 本地开发商品', '掌机便携收纳保护盒，适用于游戏周边常见使用场景。规格、价格、库存与状态用于 EC-01 本地开发联调，不代表真实品牌或商家商品。', 14, 'https://placehold.co/800x800/F5F2EC/151515?text=Gaming&seed=ec01', 0, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 0 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 0 DAY));
+
+-- Split broad seed groups into additional second-level categories without changing
+-- Product names or any SKU specification, price, stock, or status data.
+UPDATE `product`
+SET `category_id` = CASE
+    WHEN `id` IN (100003, 100005, 100006) THEN 15
+    WHEN `id` IN (100004, 100007, 100008) THEN 16
+    WHEN `id` IN (100080, 100081) THEN 17
+    WHEN `id` IN (100042, 100048, 100049) THEN 18
+    WHEN `id` IN (100070, 100073, 100094) THEN 19
+    WHEN `id` IN (100055, 100056, 100057, 100058) THEN 20
+    ELSE `category_id`
+END
+WHERE `id` BETWEEN 100001 AND 100100
+  AND `cover_url` LIKE '%seed=ec01%';
 
 INSERT INTO `sku` (
     `id`, `product_id`, `sku_code`, `spec_json`, `price`,

@@ -15,7 +15,7 @@ WHERE `id` BETWEEN 100001 AND 100100
 
 -- Remove seeded categories only when no remaining Product or child Category uses them.
 DELETE FROM `category`
-WHERE `id` BETWEEN 1 AND 14
+WHERE `id` BETWEEN 1 AND 20
   AND NOT EXISTS (
       SELECT 1 FROM `product` WHERE `product`.`category_id` = `category`.`id`
   );

@@ -1,0 +1,13 @@
+product-image:
+  populate:
+    source-api-url: https://commons.wikimedia.org/w/api.php
+    object-prefix: ec01/products
+    temp-directory: ${PRODUCT_IMAGE_TEMP_DIR:../tmp/product-images}
+    target-width: ${PRODUCT_IMAGE_TARGET_WIDTH:1000}
+    max-download-bytes: ${PRODUCT_IMAGE_MAX_DOWNLOAD_BYTES:15728640}
+    max-file-bytes: ${PRODUCT_IMAGE_MAX_FILE_BYTES:512000}
+    request-delay-millis: ${PRODUCT_IMAGE_REQUEST_DELAY_MILLIS:2000}
+    product-id: ${PRODUCT_IMAGE_PRODUCT_ID:0}
+    product-ids: ${PRODUCT_IMAGE_PRODUCT_IDS:}
+    limit: ${PRODUCT_IMAGE_LIMIT:0}
+    force: ${PRODUCT_IMAGE_FORCE:false}

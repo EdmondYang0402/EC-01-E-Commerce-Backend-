@@ -15,6 +15,7 @@ import com.ec01.vo.product.ProductListVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -25,9 +26,46 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryVO> getCategoryTree() {
-        // TODO 用户练习 1：查询可用一级分类及其可用二级分类，并组装 CategoryVO.children。
-        // 已准备 CategoryMapper.selectRootCategories() 与 selectByParentId(parentId)。
-        return List.of();
+
+        // 1. 查询所有可用一级分类
+        List<Category> categoryList =
+                categoryMapper.selectRootCategories();
+
+        List<CategoryVO> categoryListVo = new ArrayList<>();
+
+        // 2. 遍历一级分类
+        for (Category category : categoryList) {
+
+            CategoryVO categoryVO = new CategoryVO();
+
+            categoryVO.setId(category.getId());
+            categoryVO.setName(category.getName());
+
+            // 3. 查询当前一级分类下面的二级分类
+            List<Category> children =
+                    categoryMapper.selectByParentId(category.getId());
+
+            List<CategoryVO> childVOList = new ArrayList<>();
+
+            // 4. 二级分类 Category -> CategoryVO
+            for (Category child : children) {
+
+                CategoryVO childVO = new CategoryVO();
+
+                childVO.setId(child.getId());
+                childVO.setName(child.getName());
+
+                childVOList.add(childVO);
+            }
+
+            // 5. 把二级分类挂到一级分类下面
+            categoryVO.setChildren(childVOList);
+
+            // 6. 一级分类加入最终结果
+            categoryListVo.add(categoryVO);
+        }
+
+        return categoryListVo;
     }
 
     @Override
@@ -35,13 +73,75 @@ public class CategoryServiceImpl implements CategoryService {
             Long categoryId,
             Integer page,
             Integer size) {
+
+        // 1. 基础参数校验
         validateCategoryPage(categoryId, page, size);
 
-        // TODO 用户练习 2：判断 categoryId 是一级还是二级分类，并完成对应分页编排。
-        // 一级分类可配合 selectChildIds() 与 ProductMapper 的 List 分类查询；
-        // 二级分类可使用 ProductMapper 的单分类查询。还需拒绝禁用/不可见分类。
-        return new PageResult<>(List.of(), 0L);
+        // 2. 查询分类
+        Category category = categoryMapper.selectById(categoryId);
+
+        if (category == null) {
+            throw new BusinessException("分类不存在");
+        }
+
+        if (category.getStatus() != 1) {
+            throw new BusinessException("分类不可用");
+        }
+
+        // 3. 计算分页偏移量
+        long offset = (page - 1L) * size;
+
+        // 4. 准备真正用于查询商品的分类 ID
+        List<Long> categoryIds = new ArrayList<>();
+
+        // 一级分类：查它下面所有二级分类
+        if (category.getParentId() == null) {
+
+            List<Category> children =
+                    categoryMapper.selectByParentId(categoryId);
+
+            for (Category child : children) {
+
+                // 只加入可用的二级分类
+                if (child.getStatus() == 1) {
+                    categoryIds.add(child.getId());
+                }
+            }
+
+        } else {
+
+            // 二级分类：直接查当前分类
+            categoryIds.add(categoryId);
+        }
+
+        // 5. 一级分类下面没有任何可用子分类
+        if (categoryIds.isEmpty()) {
+            PageResult<ProductListVO> emptyResult = new PageResult<>();
+            emptyResult.setTotal(0L);
+            emptyResult.setRecords(new ArrayList<>());
+            return emptyResult;
+        }
+
+        // 6. 查询符合条件的商品总数
+        long total =
+                productMapper.countByCategoryIds(categoryIds);
+
+        // 7. 查询当前页商品
+        List<ProductListVO> productListVO =
+                productMapper.selectPageByCategoryIds(
+                        categoryIds,
+                        offset,
+                        size
+                );
+
+        // 8. 组装分页结果
+        PageResult<ProductListVO> pageResult = new PageResult<>();
+        pageResult.setTotal(total);
+        pageResult.setRecords(productListVO);
+
+        return pageResult;
     }
+
 
     @Override
     public void createCategory(CategoryCreateDTO dto) {
@@ -118,6 +218,36 @@ public class CategoryServiceImpl implements CategoryService {
         }
         if (page == null || size == null || page < 1 || size < 1 || size > 100) {
             throw new BusinessException(400, "分页参数不合法");
+        }
+    }
+    private void validateProductCategory(Long categoryId) {
+
+        if (categoryId == null || categoryId <= 0) {
+            throw new BusinessException("分类ID不合法");
+        }
+
+        Category category = categoryMapper.selectById(categoryId);
+
+        if (category == null) {
+            throw new BusinessException("分类不存在");
+        }
+
+        if (category.getParentId() == null) {
+            throw new BusinessException("商品只能绑定二级分类");
+        }
+
+        if (category.getStatus() == null || category.getStatus() != 1) {
+            throw new BusinessException("分类已禁用");
+        }
+
+        Category parent = categoryMapper.selectById(category.getParentId());
+
+        if (parent == null) {
+            throw new BusinessException("所属一级分类不存在");
+        }
+
+        if (parent.getStatus() == null || parent.getStatus() != 1) {
+            throw new BusinessException("所属一级分类已禁用");
         }
     }
 

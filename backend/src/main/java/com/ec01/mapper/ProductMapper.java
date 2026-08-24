@@ -150,45 +150,66 @@ public interface ProductMapper {
             @Param("categoryId") Long categoryId
     );
 
+    // TODO 用户练习 4：为此方法补充参数化的 MyBatis IN/foreach 分页 SQL。
+    // SQL 仍需遵守商品可售状态，并返回 ProductListVO 所需的最低可用 SKU 价格。
     @Select("""
-            <script>
-            SELECT
-                p.id,
-                p.name,
-                p.subtitle,
-                p.cover_url,
-                p.status,
-                (
-                    SELECT MIN(s.price)
-                    FROM sku s
-                    WHERE s.product_id = p.id AND s.status = 1
-                ) AS min_price
-            FROM product p
-            WHERE p.status = 1
-              AND p.category_id IN
-              <foreach collection="categoryIds" item="categoryId" open="(" separator="," close=")">
-                  #{categoryId}
-              </foreach>
-            ORDER BY p.id DESC
-            LIMIT #{offset}, #{pageSize}
-            </script>
-            """)
-    List<ProductListVO> selectProductPageByCategoryIds(
+    <script>
+    SELECT
+        p.id,
+        p.name,
+        p.subtitle,
+        p.cover_url AS coverUrl,
+        MIN(s.price) AS minPrice,
+        p.status
+    FROM product p
+    JOIN sku s
+        ON s.product_id = p.id
+       AND s.status = 1
+    WHERE p.status = 1
+      AND p.category_id IN
+      <foreach collection="categoryIds"
+               item="categoryId"
+               open="("
+               separator=","
+               close=")">
+          #{categoryId}
+      </foreach>
+    GROUP BY
+        p.id,
+        p.name,
+        p.subtitle,
+        p.cover_url,
+        p.status
+    ORDER BY p.id DESC
+    LIMIT #{offset}, #{size}
+    </script>
+""")
+    List<ProductListVO> selectPageByCategoryIds(
             @Param("categoryIds") List<Long> categoryIds,
             @Param("offset") long offset,
-            @Param("pageSize") Integer pageSize
+            @Param("size") Integer size
     );
 
+    // TODO 用户练习 4：为此方法补充与分页查询条件一致的参数化 COUNT SQL。
     @Select("""
-            <script>
-            SELECT COUNT(*)
-            FROM product
-            WHERE status = 1
-              AND category_id IN
-              <foreach collection="categoryIds" item="categoryId" open="(" separator="," close=")">
-                  #{categoryId}
-              </foreach>
-            </script>
-            """)
-    long countProductsByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
+    <script>
+    SELECT COUNT(DISTINCT p.id)
+    FROM product p
+    JOIN sku s
+        ON s.product_id = p.id
+       AND s.status = 1
+    WHERE p.status = 1
+      AND p.category_id IN
+      <foreach collection="categoryIds"
+               item="categoryId"
+               open="("
+               separator=","
+               close=")">
+          #{categoryId}
+      </foreach>
+    </script>
+""")
+    long countByCategoryIds(
+            @Param("categoryIds") List<Long> categoryIds
+    );
 }
