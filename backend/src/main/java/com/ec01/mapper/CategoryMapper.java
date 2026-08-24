@@ -16,6 +16,23 @@ public interface CategoryMapper {
     Category selectById(@Param("id") Long id);
 
     @Select("""
+            SELECT c.*
+            FROM category c
+            LEFT JOIN category parent ON parent.id = c.parent_id
+            WHERE c.status = 1
+              AND (
+                  c.parent_id IS NULL
+                  OR (parent.parent_id IS NULL AND parent.status = 1)
+              )
+            ORDER BY COALESCE(parent.sort_order, c.sort_order) ASC,
+                     COALESCE(parent.id, c.id) ASC,
+                     IF(c.parent_id IS NULL, 0, 1) ASC,
+                     c.sort_order ASC,
+                     c.id ASC
+            """)
+    List<Category> selectEnabledCategories();
+
+    @Select("""
             SELECT * FROM category
             WHERE parent_id IS NULL AND status = 1
             ORDER BY sort_order ASC, id ASC
@@ -37,11 +54,14 @@ public interface CategoryMapper {
     List<Long> selectChildIds(@Param("parentId") Long parentId);
 
     @Select("""
-            SELECT * FROM category
-            ORDER BY IF(parent_id IS NULL, id, parent_id) ASC,
-                     IF(parent_id IS NULL, 0, 1) ASC,
-                     sort_order ASC,
-                     id ASC
+            SELECT c.*
+            FROM category c
+            LEFT JOIN category parent ON parent.id = c.parent_id
+            ORDER BY COALESCE(parent.sort_order, c.sort_order) ASC,
+                     COALESCE(parent.id, c.id) ASC,
+                     IF(c.parent_id IS NULL, 0, 1) ASC,
+                     c.sort_order ASC,
+                     c.id ASC
             """)
     List<Category> selectAllForAdmin();
 

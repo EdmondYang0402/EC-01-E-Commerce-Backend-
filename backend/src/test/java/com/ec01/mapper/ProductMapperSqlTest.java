@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,6 +54,28 @@ class ProductMapperSqlTest {
 
         assertFalse(sql.contains("p.name like concat"));
         assertFalse(sql.contains("p.category_id = ?"));
+    }
+
+    @Test
+    void categoryPageAndCountUseTheSameParameterizedCategoryFilter() {
+        Map<String, Object> parameters = Map.of(
+                "categoryIds", List.of(101L, 102L),
+                "offset", 0L,
+                "size", 20);
+        String pageSql = normalize(configuration.getMappedStatement(
+                        ProductMapper.class.getName() + ".selectPageByCategoryIds")
+                .getBoundSql(parameters).getSql());
+        String countSql = normalize(configuration.getMappedStatement(
+                        ProductMapper.class.getName() + ".countByCategoryIds")
+                .getBoundSql(Map.of("categoryIds", List.of(101L, 102L))).getSql());
+
+        assertTrue(pageSql.contains("p.status = 1"));
+        assertTrue(countSql.contains("p.status = 1"));
+        assertTrue(pageSql.contains("p.category_id in ( ? , ? )"));
+        assertTrue(countSql.contains("p.category_id in ( ? , ? )"));
+        assertTrue(pageSql.contains("s.status = 1"));
+        assertTrue(countSql.contains("s.status = 1"));
+        assertTrue(pageSql.contains("limit ?, ?"));
     }
 
     @Test

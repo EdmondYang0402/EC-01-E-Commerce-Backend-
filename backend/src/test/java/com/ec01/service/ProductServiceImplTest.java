@@ -6,6 +6,7 @@ import com.ec01.entity.Product;
 import com.ec01.exception.BusinessException;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.mapper.SkuMapper;
+import com.ec01.mapper.CategoryMapper;
 import com.ec01.service.impl.ProductServiceImpl;
 import com.ec01.vo.product.ProductDetailVO;
 import com.ec01.vo.product.ProductListVO;
@@ -31,12 +32,15 @@ class ProductServiceImplTest {
     private SkuMapper skuMapper;
     @Mock
     private CategoryService categoryService;
+    @Mock
+    private CategoryMapper categoryMapper;
 
     private ProductServiceImpl productService;
 
     @BeforeEach
     void setUp() {
-        productService = new ProductServiceImpl(productMapper, skuMapper, categoryService);
+        productService = new ProductServiceImpl(
+                productMapper, skuMapper, categoryService, categoryMapper);
     }
 
     @Test

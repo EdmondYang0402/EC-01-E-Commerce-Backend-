@@ -16,7 +16,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,46 +28,25 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryVO> getCategoryTree() {
+        List<Category> categories = categoryMapper.selectEnabledCategories();
+        Map<Long, CategoryVO> roots = new LinkedHashMap<>();
 
-        // 1. 查询所有可用一级分类
-        List<Category> categoryList =
-                categoryMapper.selectRootCategories();
-
-        List<CategoryVO> categoryListVo = new ArrayList<>();
-
-        // 2. 遍历一级分类
-        for (Category category : categoryList) {
-
-            CategoryVO categoryVO = new CategoryVO();
-
-            categoryVO.setId(category.getId());
-            categoryVO.setName(category.getName());
-
-            // 3. 查询当前一级分类下面的二级分类
-            List<Category> children =
-                    categoryMapper.selectByParentId(category.getId());
-
-            List<CategoryVO> childVOList = new ArrayList<>();
-
-            // 4. 二级分类 Category -> CategoryVO
-            for (Category child : children) {
-
-                CategoryVO childVO = new CategoryVO();
-
-                childVO.setId(child.getId());
-                childVO.setName(child.getName());
-
-                childVOList.add(childVO);
+        for (Category category : categories) {
+            if (category.getParentId() == null) {
+                CategoryVO root = toCategoryVO(category);
+                root.setChildren(new ArrayList<>());
+                roots.put(category.getId(), root);
             }
-
-            // 5. 把二级分类挂到一级分类下面
-            categoryVO.setChildren(childVOList);
-
-            // 6. 一级分类加入最终结果
-            categoryListVo.add(categoryVO);
         }
-
-        return categoryListVo;
+        for (Category category : categories) {
+            if (category.getParentId() != null) {
+                CategoryVO parent = roots.get(category.getParentId());
+                if (parent != null) {
+                    parent.getChildren().add(toCategoryVO(category));
+                }
+            }
+        }
+        return new ArrayList<>(roots.values());
     }
 
     @Override
@@ -81,11 +62,11 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryMapper.selectById(categoryId);
 
         if (category == null) {
-            throw new BusinessException("分类不存在");
+            throw new BusinessException(404, "分类不存在");
         }
 
-        if (category.getStatus() != 1) {
-            throw new BusinessException("分类不可用");
+        if (!isEnabled(category)) {
+            throw new BusinessException(409, "分类不可用");
         }
 
         // 3. 计算分页偏移量
@@ -97,29 +78,22 @@ public class CategoryServiceImpl implements CategoryService {
         // 一级分类：查它下面所有二级分类
         if (category.getParentId() == null) {
 
-            List<Category> children =
-                    categoryMapper.selectByParentId(categoryId);
-
-            for (Category child : children) {
-
-                // 只加入可用的二级分类
-                if (child.getStatus() == 1) {
-                    categoryIds.add(child.getId());
-                }
-            }
+            categoryIds.addAll(categoryMapper.selectChildIds(categoryId));
 
         } else {
-
-            // 二级分类：直接查当前分类
+            Category parent = requireCategory(category.getParentId());
+            if (parent.getParentId() != null) {
+                throw new BusinessException(409, "分类层级数据异常");
+            }
+            if (!isEnabled(parent)) {
+                throw new BusinessException(409, "所属一级分类不可用");
+            }
             categoryIds.add(categoryId);
         }
 
         // 5. 一级分类下面没有任何可用子分类
         if (categoryIds.isEmpty()) {
-            PageResult<ProductListVO> emptyResult = new PageResult<>();
-            emptyResult.setTotal(0L);
-            emptyResult.setRecords(new ArrayList<>());
-            return emptyResult;
+            return new PageResult<>(List.of(), 0L);
         }
 
         // 6. 查询符合条件的商品总数
@@ -135,11 +109,7 @@ public class CategoryServiceImpl implements CategoryService {
                 );
 
         // 8. 组装分页结果
-        PageResult<ProductListVO> pageResult = new PageResult<>();
-        pageResult.setTotal(total);
-        pageResult.setRecords(productListVO);
-
-        return pageResult;
+        return new PageResult<>(productListVO, total);
     }
 
 
@@ -220,35 +190,18 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessException(400, "分页参数不合法");
         }
     }
-    private void validateProductCategory(Long categoryId) {
 
-        if (categoryId == null || categoryId <= 0) {
-            throw new BusinessException("分类ID不合法");
-        }
+    private CategoryVO toCategoryVO(Category category) {
+        CategoryVO vo = new CategoryVO();
+        vo.setId(category.getId());
+        vo.setName(category.getName());
+        vo.setChildren(new ArrayList<>());
+        return vo;
+    }
 
-        Category category = categoryMapper.selectById(categoryId);
-
-        if (category == null) {
-            throw new BusinessException("分类不存在");
-        }
-
-        if (category.getParentId() == null) {
-            throw new BusinessException("商品只能绑定二级分类");
-        }
-
-        if (category.getStatus() == null || category.getStatus() != 1) {
-            throw new BusinessException("分类已禁用");
-        }
-
-        Category parent = categoryMapper.selectById(category.getParentId());
-
-        if (parent == null) {
-            throw new BusinessException("所属一级分类不存在");
-        }
-
-        if (parent.getStatus() == null || parent.getStatus() != 1) {
-            throw new BusinessException("所属一级分类已禁用");
-        }
+    private boolean isEnabled(Category category) {
+        return category.getStatus() != null
+                && category.getStatus() == CategoryStatus.ENABLED.getCode();
     }
 
     private CategoryAdminVO toAdminVO(Category category) {

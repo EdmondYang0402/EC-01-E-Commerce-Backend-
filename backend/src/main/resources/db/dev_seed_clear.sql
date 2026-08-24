@@ -13,22 +13,7 @@ DELETE FROM `product`
 WHERE `id` BETWEEN 100001 AND 100100
   AND `cover_url` LIKE '%seed=ec01%';
 
--- Remove seeded categories only when no remaining Product or child Category uses them.
-DELETE FROM `category`
-WHERE `id` BETWEEN 1 AND 20
-  AND NOT EXISTS (
-      SELECT 1 FROM `product` WHERE `product`.`category_id` = `category`.`id`
-  );
-
-DELETE FROM `category`
-WHERE `id` BETWEEN 101 AND 106
-  AND NOT EXISTS (
-      SELECT 1 FROM `product` WHERE `product`.`category_id` = `category`.`id`
-  )
-  AND NOT EXISTS (
-      SELECT 1 FROM (SELECT `parent_id` FROM `category`) AS `children`
-      WHERE `children`.`parent_id` = `category`.`id`
-  );
+-- Category is now an independent module seed and is intentionally preserved.
 
 COMMIT;
 

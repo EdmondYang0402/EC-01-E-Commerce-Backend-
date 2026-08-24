@@ -16,7 +16,8 @@ const form = reactive({ name: '', subtitle: '', coverUrl: '', description: '', r
 const editing = computed(() => route.name === 'admin-product-edit')
 const productId = computed(() => Number(route.params.productId))
 const rootCategories = computed(() => categoryOptions.value.filter((item) =>
-  item.parentId == null && item.status === 'ENABLED'))
+  item.parentId == null
+  && (item.status === 'ENABLED' || item.id === Number(form.rootCategoryId))))
 const childCategories = computed(() => categoryOptions.value.filter((item) =>
   item.parentId === Number(form.rootCategoryId)
   && (item.status === 'ENABLED' || item.id === Number(form.categoryId))))

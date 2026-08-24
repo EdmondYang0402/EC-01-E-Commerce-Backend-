@@ -9,16 +9,16 @@ DROP TABLE IF EXISTS `category`;
 
 CREATE TABLE `category` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(50) NOT NULL,
+    `name` VARCHAR(80) NOT NULL,
     `parent_id` BIGINT NULL,
-    `sort` INT NOT NULL DEFAULT 0,
+    `sort_order` INT NOT NULL DEFAULT 0,
     `status` TINYINT NOT NULL DEFAULT 1,
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_category_parent_id` (`parent_id`),
+    KEY `idx_category_parent_sort` (`parent_id`, `sort_order`),
     KEY `idx_category_status` (`status`),
-    CONSTRAINT `chk_category_sort` CHECK (`sort` >= 0),
+    CONSTRAINT `chk_category_sort_order` CHECK (`sort_order` BETWEEN 0 AND 9999),
     CONSTRAINT `chk_category_status` CHECK (`status` IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -58,7 +58,7 @@ EXECUTE add_product_category_index_stmt;
 DEALLOCATE PREPARE add_product_category_index_stmt;
 
 -- Eight root categories. parent_id = NULL identifies the first level.
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort`, `status`) VALUES
+INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `status`) VALUES
 (1, '电子数码', NULL, 10, 1),
 (2, '电脑周边', NULL, 20, 1),
 (3, '服装鞋包', NULL, 30, 1),
@@ -69,7 +69,7 @@ INSERT INTO `category` (`id`, `name`, `parent_id`, `sort`, `status`) VALUES
 (8, '游戏娱乐', NULL, 80, 1);
 
 -- Thirty-five second-level categories. One disabled row is kept for status testing.
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort`, `status`) VALUES
+INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `status`) VALUES
 (101, '手机配件', 1, 10, 1),
 (102, '笔记本与主机', 1, 20, 1),
 (103, '平板与智能设备', 1, 30, 1),

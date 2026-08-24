@@ -3,8 +3,8 @@
 -- Scope: product IDs 100001-100100 and SKU codes prefixed EC01-DEV-
 -- This file is intentionally not wired into Spring Boot startup.
 --
--- Product category_id maps to the 14 second-level categories seeded below.
--- Category distribution: 6 root categories and 20 second-level categories.
+-- Product category_id maps to the fixed Category module seed.
+-- Category distribution: 8 root categories and 35 second-level categories.
 --
 -- Inventory distribution across 300 SKUs:
 --   normal stock (10-200): 240
@@ -27,35 +27,51 @@ DELETE FROM `product`
 WHERE `id` BETWEEN 100001 AND 100100
   AND `cover_url` LIKE '%seed=ec01%';
 
--- Fixed two-level category seed. IDs 1-20 are purchasable second-level categories;
--- IDs 101-106 are navigation-only first-level categories.
+-- Fixed two-level category seed shared with category-dev-init.sql.
 INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `status`) VALUES
-(101, '电子产品', NULL, 10, 1),
-(102, '电脑周边', NULL, 20, 1),
-(103, '服装鞋包', NULL, 30, 1),
-(104, '家居生活', NULL, 40, 1),
-(105, '运动户外', NULL, 50, 1),
-(106, '办公通勤', NULL, 60, 0),
-(1, '电脑与主机', 101, 10, 1),
-(2, '手机配件', 101, 20, 1),
-(4, '显示器', 101, 30, 1),
-(5, '耳机与音频', 101, 40, 1),
-(15, '存储与智能设备', 101, 50, 1),
-(3, '键盘鼠标', 102, 10, 1),
-(14, '游戏周边', 102, 20, 0),
-(16, '网络与扩展', 102, 30, 1),
-(9, '上衣与裤装', 103, 10, 1),
-(10, '鞋类', 103, 20, 1),
-(11, '背包与箱包', 103, 30, 1),
-(17, '服饰配件', 103, 40, 1),
-(6, '家用电器', 104, 10, 1),
-(7, '生活用品', 104, 20, 1),
-(12, '家居', 104, 30, 1),
-(18, '清洁与收纳', 104, 40, 1),
-(13, '运动用品', 105, 10, 1),
-(19, '户外运动', 105, 20, 1),
-(8, '文具纸品', 106, 10, 1),
-(20, '桌面办公', 106, 20, 1)
+(1, '电子数码', NULL, 10, 1),
+(2, '电脑周边', NULL, 20, 1),
+(3, '服装鞋包', NULL, 30, 1),
+(4, '办公用品', NULL, 40, 1),
+(5, '家居生活', NULL, 50, 1),
+(6, '运动户外', NULL, 60, 1),
+(7, '家用电器', NULL, 70, 1),
+(8, '游戏娱乐', NULL, 80, 1),
+(101, '手机配件', 1, 10, 1),
+(102, '笔记本与主机', 1, 20, 1),
+(103, '平板与智能设备', 1, 30, 1),
+(104, '显示器', 1, 40, 1),
+(105, '耳机与音频', 1, 50, 1),
+(201, '键盘', 2, 10, 1),
+(202, '鼠标', 2, 20, 1),
+(203, '存储设备', 2, 30, 1),
+(204, '充电与扩展', 2, 40, 1),
+(205, '网络设备', 2, 50, 1),
+(301, '上衣', 3, 10, 1),
+(302, '裤装', 3, 20, 1),
+(303, '鞋类', 3, 30, 1),
+(304, '服饰配件', 3, 40, 1),
+(305, '背包与箱包', 3, 50, 1),
+(401, '文具纸品', 4, 10, 1),
+(402, '桌面收纳', 4, 20, 1),
+(403, '办公设备', 4, 30, 1),
+(404, '打印耗材', 4, 40, 1),
+(501, '家具', 5, 10, 1),
+(502, '家居装饰', 5, 20, 1),
+(503, '生活日用', 5, 30, 1),
+(504, '清洁与收纳', 5, 40, 1),
+(601, '健身训练', 6, 10, 1),
+(602, '户外装备', 6, 20, 1),
+(603, '球类运动', 6, 30, 1),
+(604, '骑行用品', 6, 40, 1),
+(701, '厨房电器', 7, 10, 1),
+(702, '环境电器', 7, 20, 1),
+(703, '清洁电器', 7, 30, 1),
+(704, '个人护理', 7, 40, 1),
+(801, '游戏主机配件', 8, 10, 1),
+(802, '游戏手柄', 8, 20, 1),
+(803, '电竞外设', 8, 30, 1),
+(804, '桌游益智', 8, 40, 0)
 ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `parent_id` = VALUES(`parent_id`),
@@ -167,16 +183,39 @@ INSERT INTO `product` (
 (100099, '大尺寸防滑游戏鼠标垫', '游戏周边 · 精选材质 · 本地开发商品', '大尺寸防滑游戏鼠标垫，适用于游戏周边常见使用场景。规格、价格、库存与状态用于 EC-01 本地开发联调，不代表真实品牌或商家商品。', 14, 'https://placehold.co/800x800/F5F2EC/151515?text=Gaming&seed=ec01', 1, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)),
 (100100, '掌机便携收纳保护盒', '游戏周边 · 精选材质 · 本地开发商品', '掌机便携收纳保护盒，适用于游戏周边常见使用场景。规格、价格、库存与状态用于 EC-01 本地开发联调，不代表真实品牌或商家商品。', 14, 'https://placehold.co/800x800/F5F2EC/151515?text=Gaming&seed=ec01', 0, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 0 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 0 DAY));
 
--- Split broad seed groups into additional second-level categories without changing
--- Product names or any SKU specification, price, stock, or status data.
+-- Assign every deterministic seed Product to the most specific matching child Category.
+-- This does not change names, descriptions, images, SKU data, prices, stock, or statuses.
 UPDATE `product`
 SET `category_id` = CASE
-    WHEN `id` IN (100003, 100005, 100006) THEN 15
-    WHEN `id` IN (100004, 100007, 100008) THEN 16
-    WHEN `id` IN (100080, 100081) THEN 17
-    WHEN `id` IN (100042, 100048, 100049) THEN 18
-    WHEN `id` IN (100070, 100073, 100094) THEN 19
-    WHEN `id` IN (100055, 100056, 100057, 100058) THEN 20
+    WHEN `id` BETWEEN 100001 AND 100002 THEN 102
+    WHEN `id` IN (100003, 100008) THEN 203
+    WHEN `id` IN (100004, 100005) THEN 204
+    WHEN `id` IN (100006, 100025, 100026, 100027, 100028, 100029, 100030) THEN 104
+    WHEN `id` = 100007 THEN 205
+    WHEN `id` BETWEEN 100009 AND 100016 THEN 101
+    WHEN `id` IN (100017, 100018, 100021, 100022, 100023) THEN 201
+    WHEN `id` IN (100019, 100020, 100024) THEN 202
+    WHEN `id` BETWEEN 100031 AND 100038 THEN 105
+    WHEN `id` IN (100039, 100041, 100043, 100045) THEN 701
+    WHEN `id` IN (100040, 100044) THEN 702
+    WHEN `id` = 100042 THEN 703
+    WHEN `id` = 100046 THEN 704
+    WHEN `id` IN (100047, 100049, 100050, 100051, 100052) THEN 503
+    WHEN `id` = 100048 THEN 504
+    WHEN `id` = 100053 THEN 403
+    WHEN `id` IN (100054, 100056, 100057, 100058) THEN 402
+    WHEN `id` IN (100055, 100059) THEN 401
+    WHEN `id` IN (100060, 100061, 100062, 100064, 100065, 100066, 100067) THEN 301
+    WHEN `id` = 100063 THEN 302
+    WHEN `id` BETWEEN 100068 AND 100074 THEN 303
+    WHEN `id` BETWEEN 100075 AND 100081 THEN 305
+    WHEN `id` IN (100082, 100083, 100087) THEN 501
+    WHEN `id` IN (100084, 100085, 100086, 100088) THEN 502
+    WHEN `id` BETWEEN 100089 AND 100093 THEN 601
+    WHEN `id` = 100094 THEN 603
+    WHEN `id` = 100095 THEN 802
+    WHEN `id` IN (100096, 100097, 100098, 100099) THEN 803
+    WHEN `id` = 100100 THEN 801
     ELSE `category_id`
 END
 WHERE `id` BETWEEN 100001 AND 100100

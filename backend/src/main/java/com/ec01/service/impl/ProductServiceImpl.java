@@ -2,9 +2,12 @@ package com.ec01.service.impl;
 
 import com.ec01.common.PageResult;
 import com.ec01.common.ProductStatus;
+import com.ec01.common.CategoryStatus;
 import com.ec01.dto.product.ProductQueryDTO;
+import com.ec01.entity.Category;
 import com.ec01.entity.Product;
 import com.ec01.exception.BusinessException;
+import com.ec01.mapper.CategoryMapper;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.mapper.SkuMapper;
 import com.ec01.service.CategoryService;
@@ -22,6 +25,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
     private final SkuMapper skuMapper;
     private final CategoryService categoryService;
+    private final CategoryMapper categoryMapper;
 
     @Override
     public PageResult<ProductListVO> getProductPage(ProductQueryDTO dto) {
@@ -81,7 +85,32 @@ public class ProductServiceImpl implements ProductService {
     }
 
     void validateProductCategory(Long categoryId) {
-        // TODO 用户练习 3：校验分类存在、处于可用状态，并且是二级分类。
-        // CategoryMapper.selectById(categoryId) 已准备；此方法由 Admin Product 新增/编辑调用。
+        if (categoryId == null || categoryId <= 0) {
+            throw new BusinessException(400, "分类ID不合法");
+        }
+
+        Category category = categoryMapper.selectById(categoryId);
+        if (category == null) {
+            throw new BusinessException(404, "分类不存在");
+        }
+        if (category.getParentId() == null) {
+            throw new BusinessException(400, "商品只能绑定二级分类");
+        }
+        if (category.getStatus() == null
+                || category.getStatus() != CategoryStatus.ENABLED.getCode()) {
+            throw new BusinessException(409, "分类已禁用");
+        }
+
+        Category parent = categoryMapper.selectById(category.getParentId());
+        if (parent == null) {
+            throw new BusinessException(409, "所属一级分类不存在");
+        }
+        if (parent.getParentId() != null) {
+            throw new BusinessException(409, "商品分类的父分类必须是一级分类");
+        }
+        if (parent.getStatus() == null
+                || parent.getStatus() != CategoryStatus.ENABLED.getCode()) {
+            throw new BusinessException(409, "所属一级分类已禁用");
+        }
     }
 }
