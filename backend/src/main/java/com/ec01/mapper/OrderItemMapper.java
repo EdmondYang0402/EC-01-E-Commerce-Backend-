@@ -75,4 +75,15 @@ public interface OrderItemMapper {
 """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(OrderItem orderItem);
+
+
+    @Select("""
+        SELECT *
+        FROM order_item
+        WHERE order_id = #{orderId}
+        ORDER BY id
+        """)
+    List<OrderItem> selectEntitiesByOrderId(
+            @Param("orderId") Long orderId
+    );
 }

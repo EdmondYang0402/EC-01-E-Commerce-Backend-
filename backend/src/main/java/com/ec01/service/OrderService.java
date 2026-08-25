@@ -13,4 +13,6 @@ public interface OrderService {
     PageResult<OrderListVO> getMyOrders(PageQueryDTO dto);
 
     OrderDetailVO getOrderDetail(String orderNo);
+
+    void cancelOrder(String orderNo);
 }

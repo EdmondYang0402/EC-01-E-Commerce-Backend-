@@ -12,4 +12,8 @@ export const orderApi = {
   async getOrderDetail(orderNo) {
     return responseData(await http.get(`/orders/${encodeURIComponent(orderNo)}`))
   },
+
+  async cancelOrder(orderNo) {
+    return responseData(await http.patch(`/orders/${encodeURIComponent(orderNo)}/cancel`))
+  },
 }

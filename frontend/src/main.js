@@ -4,6 +4,7 @@ import { ElButton, ElInput } from 'element-plus'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/input/style/css'
 import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
 
 import App from './App.vue'
 import router from './router'

@@ -92,4 +92,14 @@ public interface SkuMapper {
             @Param("productId") Long productId,
             @Param("specJson") String specJson
     );
+
+    @Update("""
+    UPDATE sku
+    SET stock = stock + #{quantity}
+    WHERE id = #{skuId};
+""")
+    int increaseStock(
+            @Param("skuId")Long skuId,
+            @Param("quantity")Integer quantity
+    );
 }

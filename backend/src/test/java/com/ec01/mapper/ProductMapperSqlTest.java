@@ -79,6 +79,19 @@ class ProductMapperSqlTest {
     }
 
     @Test
+    void categoryCardCountsOnlyBrowsableProductsAndGroupsByCategory() {
+        String sql = normalize(configuration.getMappedStatement(
+                        ProductMapper.class.getName() + ".countProductsByCategoryIds")
+                .getBoundSql(Map.of("categoryIds", List.of(101L, 102L))).getSql());
+
+        assertTrue(sql.contains("p.status = 1"));
+        assertTrue(sql.contains("s.status = 1"));
+        assertTrue(sql.contains("p.category_id in ( ? , ? )"));
+        assertTrue(sql.contains("count(distinct p.id)"));
+        assertTrue(sql.contains("group by p.category_id"));
+    }
+
+    @Test
     void skuDetailSqlOnlyReturnsActiveSkusAndMapsStatus() {
         MappedStatement statement = configuration.getMappedStatement(
                 SkuMapper.class.getName() + ".selectByProductId");

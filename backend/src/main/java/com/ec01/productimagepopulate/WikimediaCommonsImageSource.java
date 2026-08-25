@@ -3,6 +3,7 @@ package com.ec01.productimagepopulate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpHeaders;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -15,6 +16,7 @@ import java.util.Locale;
 import java.util.Set;
 
 @Component
+@Profile("product-image-populate")
 class WikimediaCommonsImageSource {
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png");

@@ -8,5 +8,6 @@ import java.util.List;
 public class CategoryVO {
     private Long id;
     private String name;
+    private Long productCount;
     private List<CategoryVO> children;
 }

@@ -1,6 +1,7 @@
 package com.ec01.productimagepopulate;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -22,6 +23,7 @@ import java.net.URI;
 import java.util.Iterator;
 
 @Component
+@Profile("product-image-populate")
 class ProductCoverProcessor {
 
     private final ProductImagePopulateProperties properties;

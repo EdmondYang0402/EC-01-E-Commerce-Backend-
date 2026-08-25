@@ -7,9 +7,24 @@ const locale = useLocaleStore()
 </script>
 
 <template>
-  <a class="category-card" href="#featured">
+  <RouterLink class="category-card" :to="category.to">
     <span class="category-card__icon" :class="`is-${category.accent}`">
-      <svg v-if="category.shape === 'chair'" viewBox="0 0 32 32" aria-hidden="true">
+      <svg v-if="category.shape === 'device'" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="9" y="5" width="14" height="22" rx="2" />
+        <path d="M13 9h6M15 23h2" />
+      </svg>
+      <svg v-else-if="category.shape === 'keyboard'" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="5" y="9" width="22" height="14" rx="2" />
+        <path d="M9 13h2m3 0h2m3 0h2m3 0h1M9 17h2m3 0h2m3 0h2m3 0h1M10 20h12" />
+      </svg>
+      <svg v-else-if="category.shape === 'shirt'" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="m11 6-6 5 4 5 3-2v13h8V14l3 2 4-5-6-5c-1 2-3 3-5 3s-4-1-5-3Z" />
+      </svg>
+      <svg v-else-if="category.shape === 'office'" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="8" y="5" width="16" height="22" rx="1" />
+        <path d="M12 10h8m-8 5h8m-8 5h5" />
+      </svg>
+      <svg v-else-if="category.shape === 'home'" viewBox="0 0 32 32" aria-hidden="true">
         <path d="M9 5v11h14V5M8 16h16v5H8zM10 21l-2 7m14-7 2 7" />
       </svg>
       <svg v-else-if="category.shape === 'lamp'" viewBox="0 0 32 32" aria-hidden="true">
@@ -30,7 +45,7 @@ const locale = useLocaleStore()
       <small>{{ locale.t('category.items', { count: category.count }) }}</small>
     </span>
     <UiIcon class="category-card__arrow" name="arrow" :size="18" />
-  </a>
+  </RouterLink>
 </template>
 
 <style scoped>

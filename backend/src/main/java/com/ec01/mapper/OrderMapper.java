@@ -1,11 +1,7 @@
 package com.ec01.mapper;
 
 import com.ec01.entity.Order;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
@@ -42,7 +38,18 @@ public interface OrderMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Order order);
 
-
+    @Update("""
+        UPDATE orders
+        SET status = #{newStatus},
+            update_time = NOW()
+        WHERE id = #{orderId}
+          AND status = #{oldStatus}
+        """)
+    int updateStatus(
+            @Param("orderId") Long orderId,
+            @Param("oldStatus") Byte oldStatus,
+            @Param("newStatus") Byte newStatus
+    );
     /**
      * 分页查询当前用户的订单
      */

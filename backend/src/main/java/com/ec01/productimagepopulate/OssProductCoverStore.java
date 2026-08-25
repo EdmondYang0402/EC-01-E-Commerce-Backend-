@@ -6,12 +6,14 @@ import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.ec01.config.OssProperties;
 import org.springframework.http.HttpHeaders;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.io.ByteArrayInputStream;
 
 @Component
+@Profile("product-image-populate")
 class OssProductCoverStore {
 
     private final OSS oss;

@@ -1,5 +1,6 @@
 package com.ec01.service.impl;
 
+import com.ec01.common.OrderStatus;
 import com.ec01.common.PageResult;
 import com.ec01.dto.order.CreateOrderDTO;
 import com.ec01.dto.order.PageQueryDTO;
@@ -19,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+
+import static com.ec01.common.OrderStatus.PENDING_PAYMENT;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -265,6 +268,61 @@ public class OrderServiceImpl implements OrderService {
         );
 
         return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOrder(String orderNo) {
+
+        if (orderNo == null || orderNo.isBlank()) {
+            throw new BusinessException("订单号不能为空");
+        }
+
+        Long userId = UserContext.get();
+
+        // 1. 查询当前用户自己的订单
+        Order order = orderMapper.selectByOrderNoAndUserId(orderNo, userId);
+
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+
+        // 2. 检查当前订单状态是否允许取消
+        if (order.getStatus() != PENDING_PAYMENT.getCode()) {
+            throw new BusinessException("当前订单状态无法取消");
+        }
+
+        // 3. 条件更新订单状态，防止重复取消 / 并发取消
+        int updated = orderMapper.updateStatus(
+                order.getId(),
+                PENDING_PAYMENT.getCode(),
+                OrderStatus.CANCELLED.getCode()
+        );
+
+        if (updated != 1) {
+            throw new BusinessException("订单状态已发生变化，请刷新后重试");
+        }
+
+        // 4. 查询订单项
+        List<OrderItem> items =
+                orderItemMapper.selectEntitiesByOrderId(order.getId());
+
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException("订单商品数据异常");
+        }
+
+        // 5. 恢复库存
+        for (OrderItem item : items) {
+
+            int affected = skuMapper.increaseStock(
+                    item.getSkuId(),
+                    item.getQuantity()
+            );
+
+            if (affected != 1) {
+                throw new BusinessException("库存恢复失败");
+            }
+        }
     }
 
     private String generateOrderNo() {

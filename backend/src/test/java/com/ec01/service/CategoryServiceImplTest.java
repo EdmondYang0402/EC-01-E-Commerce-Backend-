@@ -10,6 +10,7 @@ import com.ec01.mapper.CategoryMapper;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.service.impl.CategoryServiceImpl;
 import com.ec01.vo.category.CategoryAdminVO;
+import com.ec01.vo.category.CategoryProductCountVO;
 import com.ec01.vo.category.CategoryVO;
 import com.ec01.vo.product.ProductListVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,14 +46,21 @@ class CategoryServiceImplTest {
                 category(101L, "手机配件", 1L, (byte) 1),
                 category(2L, "电脑周边", null, (byte) 1),
                 category(201L, "键盘", 2L, (byte) 1)));
+        when(productMapper.countProductsByCategoryIds(List.of(101L, 201L))).thenReturn(List.of(
+                count(101L, 12L),
+                count(201L, 8L)));
 
         List<CategoryVO> tree = service.getCategoryTree();
 
         assertEquals(2, tree.size());
         assertEquals("手机配件", tree.getFirst().getChildren().getFirst().getName());
+        assertEquals(12L, tree.getFirst().getProductCount());
+        assertEquals(12L, tree.getFirst().getChildren().getFirst().getProductCount());
         assertEquals("键盘", tree.get(1).getChildren().getFirst().getName());
+        assertEquals(8L, tree.get(1).getProductCount());
         verify(categoryMapper).selectEnabledCategories();
         verifyNoMoreInteractions(categoryMapper);
+        verify(productMapper).countProductsByCategoryIds(List.of(101L, 201L));
     }
 
     @Test
@@ -155,5 +163,12 @@ class CategoryServiceImplTest {
         category.setSortOrder(10);
         category.setStatus(status);
         return category;
+    }
+
+    private CategoryProductCountVO count(Long categoryId, Long productCount) {
+        CategoryProductCountVO count = new CategoryProductCountVO();
+        count.setCategoryId(categoryId);
+        count.setProductCount(productCount);
+        return count;
     }
 }

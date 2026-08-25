@@ -9,6 +9,7 @@ export const useOrderStore = defineStore('orders', {
     listLoading: false,
     detailLoading: false,
     creating: false,
+    cancellingOrderNo: null,
   }),
 
   actions: {
@@ -41,6 +42,15 @@ export const useOrderStore = defineStore('orders', {
         return this.detail
       } finally {
         this.detailLoading = false
+      }
+    },
+
+    async cancelOrder(orderNo) {
+      this.cancellingOrderNo = orderNo
+      try {
+        await orderApi.cancelOrder(orderNo)
+      } finally {
+        this.cancellingOrderNo = null
       }
     },
   },

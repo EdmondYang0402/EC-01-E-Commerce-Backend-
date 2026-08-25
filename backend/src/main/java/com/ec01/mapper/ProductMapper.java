@@ -1,6 +1,7 @@
 package com.ec01.mapper;
 
 import com.ec01.entity.Product;
+import com.ec01.vo.category.CategoryProductCountVO;
 import com.ec01.vo.product.ProductListVO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -210,6 +211,30 @@ public interface ProductMapper {
     </script>
 """)
     long countByCategoryIds(
+            @Param("categoryIds") List<Long> categoryIds
+    );
+
+    @Select("""
+    <script>
+    SELECT p.category_id AS categoryId,
+           COUNT(DISTINCT p.id) AS productCount
+    FROM product p
+    JOIN sku s
+        ON s.product_id = p.id
+       AND s.status = 1
+    WHERE p.status = 1
+      AND p.category_id IN
+      <foreach collection="categoryIds"
+               item="categoryId"
+               open="("
+               separator=","
+               close=")">
+          #{categoryId}
+      </foreach>
+    GROUP BY p.category_id
+    </script>
+    """)
+    List<CategoryProductCountVO> countProductsByCategoryIds(
             @Param("categoryIds") List<Long> categoryIds
     );
 }

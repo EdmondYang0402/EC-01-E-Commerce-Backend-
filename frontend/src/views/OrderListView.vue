@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import fallbackImage from '../assets/products/chair.png'
 import { errorMessage } from '../services/http'
 import { useLocaleStore } from '../stores/locale'
@@ -9,7 +9,7 @@ import { useOrderStore } from '../stores/orders'
 
 const orders = useOrderStore()
 const locale = useLocaleStore()
-const { records, total, listLoading } = storeToRefs(orders)
+const { records, total, listLoading, cancellingOrderNo } = storeToRefs(orders)
 const page = ref(1)
 const size = 10
 const t = (key, params) => locale.t(key, params)
@@ -53,6 +53,30 @@ const changePage = async (nextPage) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+const cancelOrder = async (order) => {
+  try {
+    await ElMessageBox.confirm(
+      t('orders.cancelConfirm', { orderNo: order.orderNo }),
+      t('orders.cancelTitle'),
+      {
+        confirmButtonText: t('orders.confirmCancel'),
+        cancelButtonText: t('orders.keepOrder'),
+        type: 'warning',
+      },
+    )
+  } catch {
+    return
+  }
+
+  try {
+    await orders.cancelOrder(order.orderNo)
+    ElMessage.success(t('orders.cancelSuccess'))
+    await loadOrders()
+  } catch (error) {
+    ElMessage.error(errorMessage(error, t('orders.cancelFailed')))
+  }
+}
+
 onMounted(loadOrders)
 </script>
 
@@ -87,7 +111,18 @@ onMounted(loadOrders)
             <strong>{{ formatCurrency(item.subtotal) }}</strong>
           </div>
         </div>
-        <RouterLink class="detail-link" :to="`/orders/${order.orderNo}`">{{ t('orders.viewDetail') }}</RouterLink>
+        <footer class="order-actions">
+          <RouterLink class="detail-link" :to="`/orders/${order.orderNo}`">{{ t('orders.viewDetail') }}</RouterLink>
+          <button
+            v-if="Number(order.status) === 0"
+            class="cancel-button"
+            type="button"
+            :disabled="cancellingOrderNo === order.orderNo"
+            @click="cancelOrder(order)"
+          >
+            {{ cancellingOrderNo === order.orderNo ? t('orders.cancelling') : t('orders.cancel') }}
+          </button>
+        </footer>
       </article>
     </div>
 
@@ -117,7 +152,10 @@ h1 { margin: 0; font-size: clamp(40px, 5vw, 68px); letter-spacing: -.055em; }
 .order-item div { display: grid; gap: 5px; }
 .order-item div span { color: var(--muted); }
 .order-item > strong { text-align: right; }
-.detail-link { display: inline-block; margin-top: 16px; color: var(--ink); font-size: 11px; font-weight: 700; }
+.order-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; }
+.detail-link { color: var(--ink); font-size: 11px; font-weight: 700; }
+.cancel-button { padding: 9px 14px; color: var(--red); font: inherit; font-size: 11px; font-weight: 700; background: transparent; border: 1px solid var(--red); cursor: pointer; }
+.cancel-button:disabled { cursor: wait; opacity: .55; }
 .state { padding: 80px 0; color: var(--muted); text-align: center; }
 .empty a { display: inline-block; margin-top: 12px; padding: 10px 16px; color: white; background: var(--ink); text-decoration: none; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 40px; font-size: 12px; }

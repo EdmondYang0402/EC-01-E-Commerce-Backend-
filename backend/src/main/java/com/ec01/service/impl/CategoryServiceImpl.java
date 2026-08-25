@@ -10,6 +10,7 @@ import com.ec01.mapper.CategoryMapper;
 import com.ec01.mapper.ProductMapper;
 import com.ec01.service.CategoryService;
 import com.ec01.vo.category.CategoryAdminVO;
+import com.ec01.vo.category.CategoryProductCountVO;
 import com.ec01.vo.category.CategoryVO;
 import com.ec01.vo.product.ProductListVO;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,17 @@ public class CategoryServiceImpl implements CategoryService {
                     parent.getChildren().add(toCategoryVO(category));
                 }
             }
+        }
+
+        Map<Long, Long> productCounts = loadProductCounts(categories);
+        for (CategoryVO root : roots.values()) {
+            long rootCount = 0L;
+            for (CategoryVO child : root.getChildren()) {
+                long childCount = productCounts.getOrDefault(child.getId(), 0L);
+                child.setProductCount(childCount);
+                rootCount += childCount;
+            }
+            root.setProductCount(rootCount);
         }
         return new ArrayList<>(roots.values());
     }
@@ -195,8 +207,23 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryVO vo = new CategoryVO();
         vo.setId(category.getId());
         vo.setName(category.getName());
+        vo.setProductCount(0L);
         vo.setChildren(new ArrayList<>());
         return vo;
+    }
+
+    private Map<Long, Long> loadProductCounts(List<Category> categories) {
+        List<Long> childIds = categories.stream()
+                .filter(category -> category.getParentId() != null)
+                .map(Category::getId)
+                .toList();
+        if (childIds.isEmpty()) {
+            return Map.of();
+        }
+        return productMapper.countProductsByCategoryIds(childIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        CategoryProductCountVO::getCategoryId,
+                        CategoryProductCountVO::getProductCount));
     }
 
     private boolean isEnabled(Category category) {

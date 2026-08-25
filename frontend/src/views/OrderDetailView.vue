@@ -2,7 +2,7 @@
 import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import fallbackImage from '../assets/products/chair.png'
 import { errorMessage } from '../services/http'
 import { useLocaleStore } from '../stores/locale'
@@ -11,7 +11,7 @@ import { useOrderStore } from '../stores/orders'
 const route = useRoute()
 const orders = useOrderStore()
 const locale = useLocaleStore()
-const { detail, detailLoading } = storeToRefs(orders)
+const { detail, detailLoading, cancellingOrderNo } = storeToRefs(orders)
 const t = (key, params) => locale.t(key, params)
 
 const formatCurrency = (value) => new Intl.NumberFormat(
@@ -43,6 +43,30 @@ const loadDetail = async () => {
   }
 }
 
+const cancelOrder = async () => {
+  try {
+    await ElMessageBox.confirm(
+      t('orders.cancelConfirm', { orderNo: detail.value.orderNo }),
+      t('orders.cancelTitle'),
+      {
+        confirmButtonText: t('orders.confirmCancel'),
+        cancelButtonText: t('orders.keepOrder'),
+        type: 'warning',
+      },
+    )
+  } catch {
+    return
+  }
+
+  try {
+    await orders.cancelOrder(detail.value.orderNo)
+    ElMessage.success(t('orders.cancelSuccess'))
+    await loadDetail()
+  } catch (error) {
+    ElMessage.error(errorMessage(error, t('orders.cancelFailed')))
+  }
+}
+
 onMounted(loadDetail)
 watch(() => route.params.orderNo, loadDetail)
 </script>
@@ -57,6 +81,14 @@ watch(() => route.params.orderNo, loadDetail)
         <div class="headline-meta">
           <span>{{ t(`order.status.${Number(detail.status)}`) }}</span>
           <strong>{{ formatCurrency(detail.totalAmount) }}</strong>
+          <button
+            v-if="Number(detail.status) === 0"
+            type="button"
+            :disabled="cancellingOrderNo === detail.orderNo"
+            @click="cancelOrder"
+          >
+            {{ cancellingOrderNo === detail.orderNo ? t('orders.cancelling') : t('orders.cancel') }}
+          </button>
         </div>
       </header>
 
@@ -89,6 +121,8 @@ h1 { margin: 0; font-size: clamp(30px, 5vw, 58px); letter-spacing: -.045em; }
 .headline-meta { display: grid; justify-items: end; gap: 8px; }
 .headline-meta span { padding: 5px 9px; color: white; font-size: 10px; background: var(--blue); }
 .headline-meta strong { font-size: 22px; }
+.headline-meta button { padding: 9px 14px; color: var(--red); font: inherit; font-size: 11px; font-weight: 700; background: transparent; border: 1px solid var(--red); cursor: pointer; }
+.headline-meta button:disabled { cursor: wait; opacity: .55; }
 .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 28px 0; background: var(--line); border: 1px solid var(--line); }
 .meta-grid div { display: grid; gap: 8px; padding: 18px; background: var(--white); }
 .meta-grid span { color: var(--muted); font-size: 9px; text-transform: uppercase; }
