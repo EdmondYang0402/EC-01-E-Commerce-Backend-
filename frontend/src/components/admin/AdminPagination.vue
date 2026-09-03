@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useLocaleStore } from '../../stores/locale'
 
 const props = defineProps({
   page: { type: Number, required: true },
@@ -8,16 +9,17 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['change'])
+const locale = useLocaleStore()
 const pages = computed(() => Math.max(1, Math.ceil(props.total / props.size)))
 </script>
 
 <template>
-  <nav v-if="total > 0" class="admin-pagination" aria-label="后台列表分页">
-    <span>共 {{ total }} 条</span>
+  <nav v-if="total > 0" class="admin-pagination" :aria-label="locale.t('admin.pagination.label')">
+    <span>{{ locale.t('admin.pagination.total', { total }) }}</span>
     <div>
-      <button type="button" :disabled="page <= 1" @click="emit('change', page - 1)">上一页</button>
+      <button type="button" :disabled="page <= 1" @click="emit('change', page - 1)">{{ locale.t('admin.pagination.previous') }}</button>
       <strong>{{ page }} / {{ pages }}</strong>
-      <button type="button" :disabled="page >= pages" @click="emit('change', page + 1)">下一页</button>
+      <button type="button" :disabled="page >= pages" @click="emit('change', page + 1)">{{ locale.t('admin.pagination.next') }}</button>
     </div>
   </nav>
 </template>

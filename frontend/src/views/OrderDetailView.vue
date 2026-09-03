@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import fallbackImage from '../assets/products/chair.png'
 import { errorMessage } from '../services/http'
+import { paymentApi } from '../services/payments'
 import { useLocaleStore } from '../stores/locale'
 import { useOrderStore } from '../stores/orders'
 
@@ -13,14 +14,15 @@ const orders = useOrderStore()
 const locale = useLocaleStore()
 const { detail, detailLoading, cancellingOrderNo } = storeToRefs(orders)
 const t = (key, params) => locale.t(key, params)
+const paying = ref(false)
 
 const formatCurrency = (value) => new Intl.NumberFormat(
-  locale.locale === 'zh' ? 'zh-CN' : locale.locale,
+  locale.locale,
   { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 
 const formatDate = (value) => value
-  ? new Intl.DateTimeFormat(locale.locale === 'zh' ? 'zh-CN' : locale.locale, {
+  ? new Intl.DateTimeFormat(locale.locale, {
       dateStyle: 'medium', timeStyle: 'short',
     }).format(new Date(value))
   : '—'
@@ -67,6 +69,26 @@ const cancelOrder = async () => {
   }
 }
 
+const payOrder = async () => {
+  const paymentWindow = window.open('', '_blank')
+  paying.value = true
+  try {
+    const payment = await paymentApi.create(detail.value.orderNo)
+    if (!paymentWindow) {
+      ElMessage.warning(t('payment.popupBlocked'))
+      return
+    }
+    paymentWindow.document.open()
+    paymentWindow.document.write(payment.paymentForm)
+    paymentWindow.document.close()
+  } catch (error) {
+    paymentWindow?.close()
+    ElMessage.error(errorMessage(error, t('payment.createFailed')))
+  } finally {
+    paying.value = false
+  }
+}
+
 onMounted(loadDetail)
 watch(() => route.params.orderNo, loadDetail)
 </script>
@@ -81,6 +103,15 @@ watch(() => route.params.orderNo, loadDetail)
         <div class="headline-meta">
           <span>{{ t(`order.status.${Number(detail.status)}`) }}</span>
           <strong>{{ formatCurrency(detail.totalAmount) }}</strong>
+          <button
+            v-if="Number(detail.status) === 0"
+            class="pay-button"
+            type="button"
+            :disabled="paying"
+            @click="payOrder"
+          >
+            {{ paying ? t('payment.opening') : t('payment.payNow') }}
+          </button>
           <button
             v-if="Number(detail.status) === 0"
             type="button"
@@ -122,6 +153,7 @@ h1 { margin: 0; font-size: clamp(30px, 5vw, 58px); letter-spacing: -.045em; }
 .headline-meta span { padding: 5px 9px; color: white; font-size: 10px; background: var(--blue); }
 .headline-meta strong { font-size: 22px; }
 .headline-meta button { padding: 9px 14px; color: var(--red); font: inherit; font-size: 11px; font-weight: 700; background: transparent; border: 1px solid var(--red); cursor: pointer; }
+.headline-meta .pay-button { color: var(--white); background: var(--ink); border-color: var(--ink); }
 .headline-meta button:disabled { cursor: wait; opacity: .55; }
 .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 28px 0; background: var(--line); border: 1px solid var(--line); }
 .meta-grid div { display: grid; gap: 8px; padding: 18px; background: var(--white); }

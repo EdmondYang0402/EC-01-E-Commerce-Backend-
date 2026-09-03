@@ -59,6 +59,30 @@ class OrderMapperSqlTest {
         assertTrue(sql.contains("receiver_address"));
     }
 
+    @Test
+    void paidTransitionUsesOldStatusCasAndSetsPayTime() {
+        String sql = normalize(statement(OrderMapper.class, "markPaid")
+                .getBoundSql(Map.of(
+                        "orderId", 9L,
+                        "oldStatus", (byte) 0,
+                        "newStatus", (byte) 1,
+                        "payTime", java.time.LocalDateTime.now()))
+                .getSql());
+
+        assertTrue(sql.contains("set status = ?"));
+        assertTrue(sql.contains("pay_time = ?"));
+        assertTrue(sql.contains("where id = ? and status = ?"));
+    }
+
+    @Test
+    void paymentNotificationLookupLocksOrderNumber() {
+        String sql = normalize(statement(OrderMapper.class, "selectByOrderNoForUpdate")
+                .getBoundSql(Map.of("orderNo", "EC001")).getSql());
+
+        assertTrue(sql.contains("where order_no = ?"));
+        assertTrue(sql.endsWith("for update"));
+    }
+
     private MappedStatement statement(Class<?> mapper, String method) {
         return configuration.getMappedStatement(mapper.getName() + "." + method);
     }

@@ -13,4 +13,5 @@ public enum OrderStatus {
     CANCELLED((byte) 4);
 
     private final byte code;
+
 }

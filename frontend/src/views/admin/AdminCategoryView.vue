@@ -5,7 +5,10 @@ import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog.vue'
 import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminCategoryApi } from '../../services/categories'
 import { errorMessage } from '../../services/http'
+import { useLocaleStore } from '../../stores/locale'
 
+const locale = useLocaleStore()
+const t = (key, params) => locale.t(key, params)
 const categories = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -14,6 +17,7 @@ const editorOpen = ref(false)
 const editorMode = ref('create')
 const statusTarget = ref(null)
 const form = reactive({ id: null, parentId: null, name: '', sortOrder: 0, status: 'ENABLED' })
+const statusLabels = computed(() => ({ ENABLED: t('admin.common.enabled'), DISABLED: t('admin.common.disabled') }))
 
 const roots = computed(() => categories.value
   .filter((item) => item.parentId == null)
@@ -26,7 +30,7 @@ const load = async () => {
   loading.value = true
   error.value = ''
   try { categories.value = await adminCategoryApi.getAll() || [] }
-  catch (requestError) { error.value = errorMessage(requestError, '分类数据加载失败') }
+  catch (requestError) { error.value = errorMessage(requestError, t('admin.categories.loadFailed')) }
   finally { loading.value = false }
 }
 
@@ -53,21 +57,21 @@ const closeEditor = () => {
 }
 
 const save = async () => {
-  if (!form.name.trim()) { ElMessage.warning('请输入分类名称'); return }
+  if (!form.name.trim()) { ElMessage.warning(t('admin.categories.nameRequired')); return }
   saving.value = true
   try {
     const base = { name: form.name.trim(), sortOrder: Number(form.sortOrder) }
     if (editorMode.value === 'create') {
       await adminCategoryApi.create({ ...base, parentId: form.parentId, status: form.status })
-      ElMessage.success(form.parentId ? '二级分类已创建' : '一级分类已创建')
+      ElMessage.success(form.parentId ? t('admin.categories.childCreated') : t('admin.categories.rootCreated'))
     } else {
       await adminCategoryApi.update(form.id, base)
-      ElMessage.success('分类信息已更新')
+      ElMessage.success(t('admin.categories.updated'))
     }
     editorOpen.value = false
     await load()
   } catch (requestError) {
-    ElMessage.error(errorMessage(requestError, '分类保存失败'))
+    ElMessage.error(errorMessage(requestError, t('admin.categories.saveFailed')))
   } finally { saving.value = false }
 }
 
@@ -78,11 +82,11 @@ const confirmStatus = async () => {
   try {
     const status = category.status === 'ENABLED' ? 'DISABLED' : 'ENABLED'
     await adminCategoryApi.updateStatus(category.id, status)
-    ElMessage.success(status === 'ENABLED' ? '分类已启用' : '分类已禁用')
+    ElMessage.success(status === 'ENABLED' ? t('admin.categories.enabled') : t('admin.categories.disabled'))
     statusTarget.value = null
     await load()
   } catch (requestError) {
-    ElMessage.error(errorMessage(requestError, '分类状态更新失败'))
+    ElMessage.error(errorMessage(requestError, t('admin.categories.statusFailed')))
   } finally { saving.value = false }
 }
 
@@ -93,50 +97,50 @@ onMounted(load)
   <section class="admin-page">
     <header class="admin-page__header">
       <div>
-        <p class="admin-eyebrow">CATEGORY STRUCTURE</p>
-        <h1>分类管理</h1>
-        <p class="admin-page__subtitle">维护固定两级分类结构。商品只绑定二级分类，禁用一级分类后用户侧会隐藏整组分类。</p>
+        <p class="admin-eyebrow">{{ t('admin.categories.eyebrow') }}</p>
+        <h1>{{ t('admin.categories.title') }}</h1>
+        <p class="admin-page__subtitle">{{ t('admin.categories.subtitle') }}</p>
       </div>
-      <button class="admin-primary-button" type="button" @click="openCreate()">＋ 新增一级分类</button>
+      <button class="admin-primary-button" type="button" @click="openCreate()">{{ t('admin.categories.addRoot') }}</button>
     </header>
 
     <div v-if="error" class="admin-error-banner">{{ error }}</div>
-    <div v-if="loading" class="admin-state">正在读取分类结构…</div>
-    <div v-else-if="!roots.length" class="admin-state">暂无分类，请先创建一级分类。</div>
+    <div v-if="loading" class="admin-state">{{ t('admin.categories.loading') }}</div>
+    <div v-else-if="!roots.length" class="admin-state">{{ t('admin.categories.empty') }}</div>
     <div v-else class="category-groups">
       <article v-for="root in roots" :key="root.id" class="category-group">
         <header class="category-row category-row--root">
-          <div class="category-row__identity"><i>01</i><div><strong>{{ root.name }}</strong><span>#{{ root.id }} · 排序 {{ root.sortOrder }}</span></div></div>
-          <AdminStatusBadge :status="root.status" />
+          <div class="category-row__identity"><i>01</i><div><strong>{{ root.name }}</strong><span>#{{ root.id }} · {{ t('admin.categories.sort', { sort: root.sortOrder }) }}</span></div></div>
+          <AdminStatusBadge :status="root.status" :labels="statusLabels" />
           <div class="admin-actions">
-            <button class="admin-text-button" type="button" @click="openCreate(root.id)">新增子分类</button>
-            <button class="admin-text-button" type="button" @click="openEdit(root)">编辑</button>
-            <button class="admin-text-button" type="button" @click="statusTarget = root">{{ root.status === 'ENABLED' ? '禁用' : '启用' }}</button>
+            <button class="admin-text-button" type="button" @click="openCreate(root.id)">{{ t('admin.categories.addChild') }}</button>
+            <button class="admin-text-button" type="button" @click="openEdit(root)">{{ t('admin.common.edit') }}</button>
+            <button class="admin-text-button" type="button" @click="statusTarget = root">{{ root.status === 'ENABLED' ? t('admin.common.disable') : t('admin.common.enable') }}</button>
           </div>
         </header>
         <div v-if="root.children.length" class="category-children">
           <div v-for="child in root.children" :key="child.id" class="category-row">
-            <div class="category-row__identity"><i>02</i><div><strong>{{ child.name }}</strong><span>#{{ child.id }} · 排序 {{ child.sortOrder }}</span></div></div>
-            <AdminStatusBadge :status="child.status" />
+            <div class="category-row__identity"><i>02</i><div><strong>{{ child.name }}</strong><span>#{{ child.id }} · {{ t('admin.categories.sort', { sort: child.sortOrder }) }}</span></div></div>
+            <AdminStatusBadge :status="child.status" :labels="statusLabels" />
             <div class="admin-actions">
-              <button class="admin-text-button" type="button" @click="openEdit(child)">编辑</button>
-              <button class="admin-text-button" type="button" @click="statusTarget = child">{{ child.status === 'ENABLED' ? '禁用' : '启用' }}</button>
+              <button class="admin-text-button" type="button" @click="openEdit(child)">{{ t('admin.common.edit') }}</button>
+              <button class="admin-text-button" type="button" @click="statusTarget = child">{{ child.status === 'ENABLED' ? t('admin.common.disable') : t('admin.common.enable') }}</button>
             </div>
           </div>
         </div>
-        <p v-else class="category-empty">尚未创建二级分类</p>
+        <p v-else class="category-empty">{{ t('admin.categories.noChildren') }}</p>
       </article>
     </div>
 
     <Teleport to="body">
       <div v-if="editorOpen" class="category-editor-backdrop" @click.self="closeEditor">
         <form class="category-editor" @submit.prevent="save">
-          <p>EC-01 ADMIN</p>
-          <h2>{{ editorMode === 'create' ? (form.parentId ? '新增二级分类' : '新增一级分类') : '编辑分类' }}</h2>
-          <label class="admin-field"><span>分类名称 *</span><input v-model="form.name" maxlength="80" required /></label>
-          <label class="admin-field"><span>排序 *</span><input v-model.number="form.sortOrder" min="0" max="9999" required type="number" /></label>
-          <label v-if="editorMode === 'create'" class="admin-field"><span>初始状态</span><select v-model="form.status"><option value="ENABLED">启用</option><option value="DISABLED">禁用</option></select></label>
-          <footer><button class="admin-secondary-button" type="button" :disabled="saving" @click="closeEditor">取消</button><button class="admin-primary-button" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存分类' }}</button></footer>
+          <p>{{ t('admin.layout.adminLabel') }}</p>
+          <h2>{{ editorMode === 'create' ? (form.parentId ? t('admin.categories.createChild') : t('admin.categories.createRoot')) : t('admin.categories.edit') }}</h2>
+          <label class="admin-field"><span>{{ t('admin.categories.name') }}</span><input v-model="form.name" maxlength="80" required /></label>
+          <label class="admin-field"><span>{{ t('admin.categories.sortField') }}</span><input v-model.number="form.sortOrder" min="0" max="9999" required type="number" /></label>
+          <label v-if="editorMode === 'create'" class="admin-field"><span>{{ t('admin.categories.initialStatus') }}</span><select v-model="form.status"><option value="ENABLED">{{ t('admin.common.enable') }}</option><option value="DISABLED">{{ t('admin.common.disable') }}</option></select></label>
+          <footer><button class="admin-secondary-button" type="button" :disabled="saving" @click="closeEditor">{{ t('admin.common.cancel') }}</button><button class="admin-primary-button" type="submit" :disabled="saving">{{ saving ? t('admin.common.saving') : t('admin.categories.save') }}</button></footer>
         </form>
       </div>
     </Teleport>
@@ -145,8 +149,8 @@ onMounted(load)
       :open="Boolean(statusTarget)"
       :busy="saving"
       :danger="statusTarget?.status === 'ENABLED'"
-      :title="statusTarget?.status === 'ENABLED' ? '禁用分类' : '启用分类'"
-      :message="statusTarget?.parentId == null && statusTarget?.status === 'ENABLED' ? '禁用一级分类后，用户侧将同时隐藏其全部子分类。Admin 仍可重新启用。' : `确认${statusTarget?.status === 'ENABLED' ? '禁用' : '启用'}“${statusTarget?.name || ''}”吗？`"
+      :title="statusTarget?.status === 'ENABLED' ? t('admin.categories.disableTitle') : t('admin.categories.enableTitle')"
+      :message="statusTarget?.parentId == null && statusTarget?.status === 'ENABLED' ? t('admin.categories.disableRootWarning') : t('admin.categories.statusMessage', { action: statusTarget?.status === 'ENABLED' ? t('admin.common.disable') : t('admin.common.enable'), name: statusTarget?.name || '' })"
       @cancel="statusTarget = null"
       @confirm="confirmStatus"
     />

@@ -23,6 +23,7 @@ const router = createRouter({
         { path: 'orders', name: 'admin-orders', component: () => import('../views/admin/AdminOrderListView.vue') },
         { path: 'orders/:orderNo', name: 'admin-order-detail', component: () => import('../views/admin/AdminOrderDetailView.vue') },
         { path: 'users', name: 'admin-users', component: () => import('../views/admin/AdminUserListView.vue') },
+        { path: 'security', name: 'admin-security', component: () => import('../views/admin/AdminSecurityView.vue') },
       ],
     },
     {
@@ -83,6 +84,12 @@ const router = createRouter({
           path: 'orders/:orderNo',
           name: 'order-detail',
           component: () => import('../views/OrderDetailView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'payment/result',
+          name: 'payment-result',
+          component: () => import('../views/PaymentResultView.vue'),
           meta: { requiresAuth: true },
         },
       ],

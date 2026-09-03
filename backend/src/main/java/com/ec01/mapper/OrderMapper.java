@@ -97,6 +97,51 @@ public interface OrderMapper {
     );
 
     @Select("""
+        SELECT *
+        FROM orders
+        WHERE order_no = #{orderNo}
+          AND user_id = #{userId}
+        LIMIT 1
+        FOR UPDATE
+        """)
+    Order selectByOrderNoAndUserIdForUpdate(
+            @Param("orderNo") String orderNo,
+            @Param("userId") Long userId
+    );
+
+    @Select("""
+        SELECT *
+        FROM orders
+        WHERE id = #{orderId}
+        LIMIT 1
+        """)
+    Order selectById(@Param("orderId") Long orderId);
+
+    @Select("""
+        SELECT *
+        FROM orders
+        WHERE id = #{orderId}
+        LIMIT 1
+        FOR UPDATE
+        """)
+    Order selectByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Update("""
+        UPDATE orders
+        SET status = #{newStatus},
+            pay_time = #{payTime},
+            update_time = NOW()
+        WHERE id = #{orderId}
+          AND status = #{oldStatus}
+        """)
+    int markPaid(
+            @Param("orderId") Long orderId,
+            @Param("oldStatus") Byte oldStatus,
+            @Param("newStatus") Byte newStatus,
+            @Param("payTime") java.time.LocalDateTime payTime
+    );
+
+    @Select("""
             <script>
             SELECT *
             FROM orders
@@ -151,4 +196,13 @@ public interface OrderMapper {
             LIMIT 1
             """)
     Order selectByOrderNo(@Param("orderNo") String orderNo);
+
+    @Select("""
+            SELECT *
+            FROM orders
+            WHERE order_no = #{orderNo}
+            LIMIT 1
+            FOR UPDATE
+            """)
+    Order selectByOrderNoForUpdate(@Param("orderNo") String orderNo);
 }

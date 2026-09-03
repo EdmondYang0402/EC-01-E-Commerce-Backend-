@@ -1,6 +1,8 @@
 spring:
   application:
     name: EC-01
+  config:
+    import: optional:file:./alipay.local[.properties],optional:file:./backend/alipay.local[.properties]
   datasource:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:ec01}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USERNAME:root}
@@ -29,3 +31,15 @@ oss:
   endpoint: https://oss-cn-shanghai.aliyuncs.com
   bucket-name: e-commerce-backend-ec-01
   public-base-url: https://e-commerce-backend-ec-01.oss-cn-shanghai.aliyuncs.com
+
+# Sandbox credentials may be supplied through environment variables or the ignored
+# local file backend/alipay.local. Payment stays disabled when neither is present.
+alipay:
+  enabled: ${ALIPAY_ENABLED:false}
+  app-id: ${ALIPAY_APP_ID:}
+  gateway-url: ${ALIPAY_GATEWAY_URL:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
+  private-key: ${ALIPAY_PRIVATE_KEY:}
+  alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
+  notify-url: ${ALIPAY_NOTIFY_URL:}
+  return-url: ${ALIPAY_RETURN_URL:http://localhost:5173/payment/result}
+  seller-id: ${ALIPAY_SELLER_ID:}

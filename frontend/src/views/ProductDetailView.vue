@@ -25,7 +25,7 @@ const selectedSku = computed(() => detail.value?.skus?.find((sku) => sku.id === 
 const imageUrl = computed(() => detail.value?.coverUrl || fallbackImage)
 
 const formatPrice = (value) => new Intl.NumberFormat(
-  locale.locale === 'zh' ? 'zh-CN' : locale.locale,
+  locale.locale,
   { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 

@@ -21,10 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static com.ec01.common.OrderStatus.PAID;
 import static com.ec01.common.OrderStatus.PENDING_PAYMENT;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final CartItemMapper cartItemMapper;
@@ -324,6 +326,58 @@ public class OrderServiceImpl implements OrderService {
             }
         }
     }
+
+    @Override
+    public void shipOrder(Long orderId) {
+
+        Order order = orderMapper.selectById(orderId);
+
+        if (order == null) {
+            throw new BusinessException("订单不存在！");
+        }
+
+        if (order.getStatus() != OrderStatus.PAID.getCode()) {
+            throw new BusinessException("尚未完成支付，不能发货");
+        }
+
+        int updated = orderMapper.updateStatus(
+                orderId,
+                OrderStatus.PAID.getCode(),
+                OrderStatus.SHIPPED.getCode()
+        );
+
+        if (updated != 1) {
+            throw new BusinessException("订单状态已变化，发货失败");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmReceive(Long orderId) {
+
+        Long userId = UserContext.get();
+
+        Order order = orderMapper.selectById(orderId);
+
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作该订单");
+        }
+
+        int updated = orderMapper.updateStatus(
+                orderId,
+                OrderStatus.SHIPPED.getCode(),
+                OrderStatus.COMPLETED.getCode()
+        );
+
+        if (updated != 1) {
+            throw new BusinessException("订单状态不允许确认收货");
+        }
+    }
+
 
     private String generateOrderNo() {
         String time = LocalDateTime.now()

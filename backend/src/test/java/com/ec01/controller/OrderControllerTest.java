@@ -9,7 +9,10 @@ import com.ec01.exception.GlobalExceptionHandler;
 import com.ec01.mapper.UserMapper;
 import com.ec01.security.JwtInterceptor;
 import com.ec01.service.OrderService;
+import com.ec01.service.PaymentService;
 import com.ec01.vo.order.OrderDetailVO;
+import com.ec01.vo.payment.PaymentCreateVO;
+import com.ec01.vo.payment.PaymentVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OrderControllerTest {
 
     private OrderService orderService;
+    private PaymentService paymentService;
     private JwtUtil jwtUtil;
     private LoginSessionService loginSessionService;
     private UserMapper userMapper;
@@ -40,11 +44,12 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         orderService = mock(OrderService.class);
+        paymentService = mock(PaymentService.class);
         jwtUtil = mock(JwtUtil.class);
         loginSessionService = mock(LoginSessionService.class);
         userMapper = mock(UserMapper.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new OrderController(orderService))
+                .standaloneSetup(new OrderController(orderService, paymentService))
                 .addInterceptors(new JwtInterceptor(jwtUtil, loginSessionService, userMapper))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -114,6 +119,31 @@ class OrderControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.orderNo").value("EC202608200001"));
+    }
+
+    @Test
+    void authenticatedUserCanCreateAndQueryOrderPayment() throws Exception {
+        mockValidToken();
+        PaymentCreateVO createVO = new PaymentCreateVO();
+        createVO.setPaymentNo("PAY001");
+        createVO.setPaymentForm("<form>pay</form>");
+        PaymentVO paymentVO = new PaymentVO();
+        paymentVO.setPaymentNo("PAY001");
+        when(paymentService.createPayment("EC001")).thenReturn(createVO);
+        when(paymentService.getPaymentByOrderNo("EC001")).thenReturn(paymentVO);
+
+        mockMvc.perform(post("/api/orders/EC001/payment")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.paymentNo").value("PAY001"));
+
+        mockMvc.perform(get("/api/orders/EC001/payment")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.paymentNo").value("PAY001"));
+
+        verify(paymentService).createPayment("EC001");
+        verify(paymentService).getPaymentByOrderNo("EC001");
     }
 
     private void mockValidToken() {

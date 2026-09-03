@@ -84,7 +84,9 @@ public class JwtInterceptor implements HandlerInterceptor {
         String method = request.getMethod();
 
         if (HttpMethod.POST.matches(method)) {
-            return "/api/auth/register".equals(path) || "/api/auth/login".equals(path);
+            return "/api/auth/register".equals(path)
+                    || "/api/auth/login".equals(path)
+                    || "/api/payments/alipay/notify".equals(path);
         }
         if (HttpMethod.GET.matches(method)) {
             return isPathOrChild(path, "/api/products")

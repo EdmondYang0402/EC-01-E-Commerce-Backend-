@@ -55,6 +55,11 @@ export const useAuthStore = defineStore('auth', {
       this.clearSession()
     },
 
+    async changeAdminPassword(payload) {
+      await authApi.changeAdminPassword(payload)
+      this.clearSession()
+    },
+
     async logout() {
       try {
         if (this.token) await authApi.logout()

@@ -1,8 +1,11 @@
 package com.ec01.service.impl;
 
+import com.ec01.auth.LoginSessionService;
 import com.ec01.common.PageResult;
+import com.ec01.common.UserRole;
 import com.ec01.common.UserStatus;
 import com.ec01.dto.admin.user.AdminUserQueryDTO;
+import com.ec01.dto.admin.user.UpdatePasswordDTO;
 import com.ec01.dto.admin.user.UserStatusUpdateDTO;
 import com.ec01.entity.User;
 import com.ec01.exception.BusinessException;
@@ -11,6 +14,7 @@ import com.ec01.security.UserContext;
 import com.ec01.service.AdminUserService;
 import com.ec01.vo.admin.user.AdminUserListVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,6 +23,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminUserServiceImpl implements AdminUserService {
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final LoginSessionService loginSessionService;
+
 
     @Override
     public PageResult<AdminUserListVO> getUserPage(AdminUserQueryDTO dto) {
@@ -56,6 +63,44 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new BusinessException(500, "用户状态更新失败");
         }
     }
+
+    @Override
+    public void updatePassword(Long adminId, String sessionId, UpdatePasswordDTO dto) {
+        if (adminId == null || sessionId == null || sessionId.isBlank()) {
+            throw new BusinessException(401, "当前登录会话无效");
+        }
+        if (dto == null) {
+            throw new BusinessException(400, "密码参数不能为空");
+        }
+
+        User admin = userMapper.selectById(adminId);
+
+        if (admin == null) {
+            throw new BusinessException(404, "管理员不存在");
+        }
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new BusinessException(403, "无管理员权限");
+        }
+
+        if (!passwordEncoder.matches(dto.getOldPassword(), admin.getPassword())) {
+            throw new BusinessException(400, "旧密码错误");
+        }
+
+        if (!dto.getNewPassword().equals(dto.getConfirmNewPassword())) {
+            throw new BusinessException(400, "两次密码不一致");
+        }
+
+        if (passwordEncoder.matches(dto.getNewPassword(), admin.getPassword())) {
+            throw new BusinessException(400, "新密码不能与旧密码相同");
+        }
+
+        String encodedPassword = passwordEncoder.encode(dto.getNewPassword());
+        if (userMapper.updatePassword(adminId, encodedPassword) != 1) {
+            throw new BusinessException(500, "密码修改失败");
+        }
+        loginSessionService.deleteSession(sessionId);
+    }
+
 
     private AdminUserListVO toListVO(User user) {
         AdminUserListVO vo = new AdminUserListVO();

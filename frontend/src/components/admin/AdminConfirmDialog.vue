@@ -1,28 +1,34 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import { useLocaleStore } from '../../stores/locale'
+
+const props = defineProps({
   open: { type: Boolean, default: false },
-  title: { type: String, default: '确认操作' },
+  title: { type: String, default: '' },
   message: { type: String, required: true },
-  confirmText: { type: String, default: '确认' },
+  confirmText: { type: String, default: '' },
   busy: { type: Boolean, default: false },
   danger: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
+const locale = useLocaleStore()
+const dialogTitle = computed(() => props.title || locale.t('admin.dialog.defaultTitle'))
+const dialogConfirmText = computed(() => props.confirmText || locale.t('admin.dialog.confirm'))
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="open" class="confirm-backdrop" role="presentation" @click.self="emit('cancel')">
-      <section class="confirm-dialog" role="dialog" aria-modal="true" :aria-label="title">
-        <p>EC-01 ADMIN</p>
-        <h2>{{ title }}</h2>
+      <section class="confirm-dialog" role="dialog" aria-modal="true" :aria-label="dialogTitle">
+        <p>{{ locale.t('admin.layout.adminLabel') }}</p>
+        <h2>{{ dialogTitle }}</h2>
         <div class="confirm-dialog__rule" />
         <span>{{ message }}</span>
         <footer>
-          <button type="button" :disabled="busy" @click="emit('cancel')">取消</button>
+          <button type="button" :disabled="busy" @click="emit('cancel')">{{ locale.t('admin.common.cancel') }}</button>
           <button type="button" class="primary" :class="{ danger }" :disabled="busy" @click="emit('confirm')">
-            {{ busy ? '处理中…' : confirmText }}
+            {{ busy ? locale.t('admin.common.processing') : dialogConfirmText }}
           </button>
         </footer>
       </section>

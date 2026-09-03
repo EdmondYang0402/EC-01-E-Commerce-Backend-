@@ -23,7 +23,7 @@ const selectedCartItemIds = computed(() => items.value
 const t = (key, params) => locale.t(key, params)
 
 const formatCurrency = (value) => new Intl.NumberFormat(
-  locale.locale === 'zh' ? 'zh-CN' : locale.locale,
+  locale.locale,
   { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 

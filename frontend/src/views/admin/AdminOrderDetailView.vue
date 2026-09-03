@@ -1,27 +1,33 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import fallbackImage from '../../assets/products/chair.png'
 import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminOrderApi } from '../../services/adminOrders'
 import { errorMessage } from '../../services/http'
+import { useLocaleStore } from '../../stores/locale'
 
 const route = useRoute()
+const locale = useLocaleStore()
+const t = (key, params) => locale.t(key, params)
 const detail = ref(null)
 const loading = ref(false)
 const error = ref('')
-const statusLabels = { PENDING_PAYMENT: '待支付', PAID: '已支付', SHIPPED: '已发货', COMPLETED: '已完成', CANCELLED: '已取消' }
-const formatCurrency = (value) => new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(Number(value || 0))
-const formatDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
+const statusLabels = computed(() => ({
+  PENDING_PAYMENT: t('admin.orders.pending'), PAID: t('admin.orders.paid'), SHIPPED: t('admin.orders.shipped'), COMPLETED: t('admin.orders.completed'), CANCELLED: t('admin.orders.cancelled'),
+  0: t('admin.orders.pending'), 1: t('admin.orders.paid'), 2: t('admin.orders.shipped'), 3: t('admin.orders.completed'), 4: t('admin.orders.cancelled'),
+}))
+const formatCurrency = (value) => new Intl.NumberFormat(locale.locale, { style: 'currency', currency: 'CNY' }).format(Number(value || 0))
+const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 const formatSpec = (value) => {
-  if (!value) return '标准规格'
+  if (!value) return t('admin.orderDetail.standardSpec')
   try { return Object.entries(JSON.parse(value)).map(([key, item]) => `${key}: ${item}`).join(' · ') }
   catch { return value }
 }
 const load = async () => {
   loading.value = true; error.value = ''
   try { detail.value = await adminOrderApi.getDetail(route.params.orderNo) }
-  catch (requestError) { error.value = errorMessage(requestError, '订单详情加载失败'); detail.value = null }
+  catch (requestError) { error.value = errorMessage(requestError, t('admin.orderDetail.loadFailed')); detail.value = null }
   finally { loading.value = false }
 }
 onMounted(load)
@@ -30,14 +36,14 @@ watch(() => route.params.orderNo, load)
 
 <template>
   <section class="admin-page">
-    <RouterLink class="admin-back" to="/admin/orders">← 返回订单列表</RouterLink>
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">重新加载</button></div>
-    <div v-if="loading" class="admin-state">正在加载订单详情…</div>
-    <div v-else-if="!detail" class="admin-state">无法显示该订单</div>
+    <RouterLink class="admin-back" to="/admin/orders">{{ t('admin.orderDetail.back') }}</RouterLink>
+    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
+    <div v-if="loading" class="admin-state">{{ t('admin.orderDetail.loading') }}</div>
+    <div v-else-if="!detail" class="admin-state">{{ t('admin.orderDetail.unavailable') }}</div>
     <template v-else>
-      <header class="order-hero"><div><p class="admin-eyebrow">ORDER DETAIL</p><h1>{{ detail.orderNo }}</h1><p>User #{{ detail.userId }} · 创建于 {{ formatDate(detail.createTime) }}</p></div><div><AdminStatusBadge :status="detail.status" :labels="statusLabels" /><strong>{{ formatCurrency(detail.totalAmount) }}</strong></div></header>
-      <section class="receiver-panel admin-panel"><header><span>DELIVERY INFORMATION</span><h2>收货信息</h2></header><div><article><span>收货人</span><strong>{{ detail.receiverName || '—' }}</strong></article><article><span>联系电话</span><strong>{{ detail.receiverPhone || '—' }}</strong></article><article><span>收货地址</span><strong>{{ detail.receiverAddress || '—' }}</strong></article></div></section>
-      <section class="snapshot-section"><header><div><p class="admin-eyebrow">PURCHASE SNAPSHOTS</p><h2>订单项</h2></div><span>{{ detail.items?.length || 0 }} ITEMS</span></header><div v-if="!detail.items?.length" class="admin-state">该订单没有订单项</div><div v-else class="snapshot-list"><article v-for="item in detail.items" :key="item.id"><img :src="item.coverUrl || fallbackImage" :alt="item.productName" /><div class="snapshot-copy"><strong>{{ item.productName }}</strong><span>{{ formatSpec(item.skuSpec) }}</span><small>Product #{{ item.productId }} / SKU #{{ item.skuId }}</small></div><span>{{ formatCurrency(item.price) }} × {{ item.quantity }}</span><strong>{{ formatCurrency(item.subtotal) }}</strong></article></div></section>
+      <header class="order-hero"><div><p class="admin-eyebrow">{{ t('admin.orders.eyebrow') }}</p><h1>{{ detail.orderNo }}</h1><p>{{ t('admin.orderDetail.created', { userId: detail.userId, date: formatDate(detail.createTime) }) }}</p></div><div><AdminStatusBadge :status="detail.status" :labels="statusLabels" /><strong>{{ formatCurrency(detail.totalAmount) }}</strong></div></header>
+      <section class="receiver-panel admin-panel"><header><span>{{ t('admin.orderDetail.delivery') }}</span><h2>{{ t('admin.orderDetail.delivery') }}</h2></header><div><article><span>{{ t('admin.orderDetail.receiver') }}</span><strong>{{ detail.receiverName || '—' }}</strong></article><article><span>{{ t('admin.orderDetail.phone') }}</span><strong>{{ detail.receiverPhone || '—' }}</strong></article><article><span>{{ t('admin.orderDetail.address') }}</span><strong>{{ detail.receiverAddress || '—' }}</strong></article></div></section>
+      <section class="snapshot-section"><header><div><p class="admin-eyebrow">{{ t('admin.orderDetail.items') }}</p><h2>{{ t('admin.orderDetail.items') }}</h2></div><span>{{ t('admin.orderDetail.itemCount', { count: detail.items?.length || 0 }) }}</span></header><div v-if="!detail.items?.length" class="admin-state">{{ t('admin.orderDetail.noItems') }}</div><div v-else class="snapshot-list"><article v-for="item in detail.items" :key="item.id"><img :src="item.coverUrl || fallbackImage" :alt="item.productName" /><div class="snapshot-copy"><strong>{{ item.productName }}</strong><span>{{ formatSpec(item.skuSpec) }}</span><small>{{ t('admin.common.productId', { id: item.productId }) }} / {{ t('admin.common.skuId', { id: item.skuId }) }}</small></div><span>{{ formatCurrency(item.price) }} × {{ item.quantity }}</span><strong>{{ formatCurrency(item.subtotal) }}</strong></article></div></section>
     </template>
   </section>
 </template>

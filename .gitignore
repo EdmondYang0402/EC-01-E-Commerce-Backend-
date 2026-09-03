@@ -38,6 +38,7 @@ dist/
 .vite/
 *.local
 .codex-vite.*.log
+.codex-alipay-*.log
 
 # One-off local data preparation artifacts
 /tmp/

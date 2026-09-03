@@ -1,8 +1,11 @@
 package com.ec01.service;
 
+import com.ec01.auth.LoginSessionService;
 import com.ec01.common.PageResult;
+import com.ec01.common.UserRole;
 import com.ec01.common.UserStatus;
 import com.ec01.dto.admin.user.AdminUserQueryDTO;
+import com.ec01.dto.admin.user.UpdatePasswordDTO;
 import com.ec01.dto.admin.user.UserStatusUpdateDTO;
 import com.ec01.entity.User;
 import com.ec01.exception.BusinessException;
@@ -13,6 +16,7 @@ import com.ec01.vo.admin.user.AdminUserListVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,16 +26,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class AdminUserServiceImplTest {
     private UserMapper userMapper;
+    private PasswordEncoder passwordEncoder;
+    private LoginSessionService loginSessionService;
     private AdminUserServiceImpl service;
 
     @BeforeEach
     void setUp() {
         userMapper = mock(UserMapper.class);
-        service = new AdminUserServiceImpl(userMapper);
+        passwordEncoder = mock(PasswordEncoder.class);
+        loginSessionService = mock(LoginSessionService.class);
+        service = new AdminUserServiceImpl(userMapper, passwordEncoder, loginSessionService);
     }
 
     @AfterEach
@@ -106,5 +115,52 @@ class AdminUserServiceImplTest {
                 BusinessException.class, () -> service.changeUserStatus(99L, dto));
 
         assertEquals(404, exception.getCode());
+    }
+
+    @Test
+    void administratorCanChangeOwnPasswordAndCurrentSessionIsDeleted() {
+        User admin = new User();
+        admin.setId(5L);
+        admin.setRole(UserRole.ADMIN);
+        admin.setPassword("encoded-old");
+        UpdatePasswordDTO dto = passwordDto("OldPass123", "NewPass456", "NewPass456");
+        when(userMapper.selectById(5L)).thenReturn(admin);
+        when(passwordEncoder.matches("OldPass123", "encoded-old")).thenReturn(true);
+        when(passwordEncoder.matches("NewPass456", "encoded-old")).thenReturn(false);
+        when(passwordEncoder.encode("NewPass456")).thenReturn("encoded-new");
+        when(userMapper.updatePassword(5L, "encoded-new")).thenReturn(1);
+
+        service.updatePassword(5L, "session-5", dto);
+
+        verify(userMapper).updatePassword(5L, "encoded-new");
+        verify(loginSessionService).deleteSession("session-5");
+    }
+
+    @Test
+    void passwordMismatchDoesNotUpdatePasswordOrDeleteSession() {
+        User admin = new User();
+        admin.setId(5L);
+        admin.setRole(UserRole.ADMIN);
+        admin.setPassword("encoded-old");
+        UpdatePasswordDTO dto = passwordDto("OldPass123", "NewPass456", "OtherPass789");
+        when(userMapper.selectById(5L)).thenReturn(admin);
+        when(passwordEncoder.matches("OldPass123", "encoded-old")).thenReturn(true);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> service.updatePassword(5L, "session-5", dto));
+
+        assertEquals(400, exception.getCode());
+        verify(userMapper, never()).updatePassword(5L, "encoded-new");
+        verify(loginSessionService, never()).deleteSession("session-5");
+    }
+
+    private UpdatePasswordDTO passwordDto(String oldPassword, String newPassword,
+                                          String confirmNewPassword) {
+        UpdatePasswordDTO dto = new UpdatePasswordDTO();
+        dto.setOldPassword(oldPassword);
+        dto.setNewPassword(newPassword);
+        dto.setConfirmNewPassword(confirmNewPassword);
+        return dto;
     }
 }

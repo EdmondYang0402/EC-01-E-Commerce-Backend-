@@ -24,4 +24,8 @@ export const authApi = {
   async changePassword(payload) {
     return responseData(await http.put('/users/me/password', payload))
   },
+
+  async changeAdminPassword(payload) {
+    return responseData(await http.put('/admin/users/me/password', payload))
+  },
 }

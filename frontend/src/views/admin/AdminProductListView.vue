@@ -7,7 +7,10 @@ import AdminPagination from '../../components/admin/AdminPagination.vue'
 import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminProductApi } from '../../services/adminProducts'
 import { errorMessage } from '../../services/http'
+import { useLocaleStore } from '../../stores/locale'
 
+const locale = useLocaleStore()
+const t = (key, params) => locale.t(key, params)
 const size = 20
 const records = ref([])
 const total = ref(0)
@@ -17,16 +20,16 @@ const error = ref('')
 const statusBusy = ref(false)
 const statusTarget = ref(null)
 const filters = reactive({ keyword: '', status: '', categoryId: '' })
-const productLabels = { ON_SHELF: '已上架', OFF_SHELF: '已下架' }
+const productLabels = computed(() => ({ ON_SHELF: t('admin.common.onShelf'), OFF_SHELF: t('admin.common.offShelf') }))
 
 const statusMessage = computed(() => {
   if (!statusTarget.value) return ''
-  const action = statusTarget.value.nextStatus === 'ON_SHELF' ? '上架' : '下架'
-  return `确认${action}商品“${statusTarget.value.product.name}”？后端将负责校验所有业务条件。`
+  const action = statusTarget.value.nextStatus === 'ON_SHELF' ? t('admin.common.putOnShelf') : t('admin.common.takeOffShelf')
+  return t('admin.products.statusMessage', { action, name: statusTarget.value.product.name })
 })
 
-const formatCurrency = (value) => value == null ? '—' : new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(Number(value))
-const formatDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
+const formatCurrency = (value) => value == null ? '—' : new Intl.NumberFormat(locale.locale, { style: 'currency', currency: 'CNY' }).format(Number(value))
+const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 
 const load = async () => {
   loading.value = true
@@ -42,7 +45,7 @@ const load = async () => {
     records.value = result?.records || []
     total.value = Number(result?.total || 0)
   } catch (requestError) {
-    error.value = errorMessage(requestError, '商品列表加载失败')
+    error.value = errorMessage(requestError, t('admin.products.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -62,11 +65,11 @@ const confirmStatusChange = async () => {
   statusBusy.value = true
   try {
     await adminProductApi.updateStatus(statusTarget.value.product.id, statusTarget.value.nextStatus)
-    ElMessage.success('商品状态已更新')
+    ElMessage.success(t('admin.products.statusUpdated'))
     statusTarget.value = null
     await load()
   } catch (requestError) {
-    ElMessage.error(errorMessage(requestError, '商品状态更新失败'))
+    ElMessage.error(errorMessage(requestError, t('admin.products.statusUpdateFailed')))
   } finally {
     statusBusy.value = false
   }
@@ -79,36 +82,36 @@ onMounted(load)
   <section class="admin-page">
     <header class="admin-page__header">
       <div>
-        <p class="admin-eyebrow">CATALOG MANAGEMENT</p>
-        <h1>商品管理</h1>
-        <p class="admin-page__subtitle">管理商品基础资料、SKU 与销售状态。价格和库存始终归属于 SKU。</p>
+        <p class="admin-eyebrow">{{ t('admin.products.eyebrow') }}</p>
+        <h1>{{ t('admin.products.title') }}</h1>
+        <p class="admin-page__subtitle">{{ t('admin.products.subtitle') }}</p>
       </div>
-      <RouterLink class="admin-primary-button" to="/admin/products/create">＋ 新增商品</RouterLink>
+      <RouterLink class="admin-primary-button" to="/admin/products/create">{{ t('admin.products.add') }}</RouterLink>
     </header>
 
     <form class="admin-filter-card" @submit.prevent="search">
-      <label class="admin-field"><span>关键词</span><input v-model="filters.keyword" maxlength="120" placeholder="商品名称" /></label>
-      <label class="admin-field"><span>状态</span><select v-model="filters.status"><option value="">全部状态</option><option value="ON_SHELF">已上架</option><option value="OFF_SHELF">已下架</option></select></label>
-      <label class="admin-field"><span>分类 ID</span><input v-model="filters.categoryId" min="1" type="number" placeholder="全部分类" /></label>
-      <div class="admin-filter-actions"><button class="admin-primary-button" type="submit">查询</button><button class="admin-secondary-button" type="button" @click="reset">重置</button></div>
+      <label class="admin-field"><span>{{ t('admin.products.keyword') }}</span><input v-model="filters.keyword" maxlength="120" :placeholder="t('admin.products.namePlaceholder')" /></label>
+      <label class="admin-field"><span>{{ t('admin.common.status') }}</span><select v-model="filters.status"><option value="">{{ t('admin.common.allStatuses') }}</option><option value="ON_SHELF">{{ t('admin.common.onShelf') }}</option><option value="OFF_SHELF">{{ t('admin.common.offShelf') }}</option></select></label>
+      <label class="admin-field"><span>{{ t('admin.products.categoryId') }}</span><input v-model="filters.categoryId" min="1" type="number" :placeholder="t('admin.products.allCategories')" /></label>
+      <div class="admin-filter-actions"><button class="admin-primary-button" type="submit">{{ t('admin.common.search') }}</button><button class="admin-secondary-button" type="button" @click="reset">{{ t('admin.common.reset') }}</button></div>
     </form>
 
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">重新加载</button></div>
-    <div v-if="loading" class="admin-state">正在加载商品…</div>
-    <div v-else-if="!records.length" class="admin-state">暂无符合条件的商品</div>
+    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
+    <div v-if="loading" class="admin-state">{{ t('admin.products.loading') }}</div>
+    <div v-else-if="!records.length" class="admin-state">{{ t('admin.products.empty') }}</div>
     <template v-else>
       <div class="admin-table-wrap">
         <table class="admin-table product-table">
-          <thead><tr><th>商品</th><th>分类</th><th>SKU</th><th>最低价格</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>{{ t('admin.products.product') }}</th><th>{{ t('admin.products.category') }}</th><th>SKU</th><th>{{ t('admin.products.minPrice') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.common.updatedAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead>
           <tbody>
             <tr v-for="product in records" :key="product.id">
-              <td><div class="product-cell"><img :src="product.coverUrl || fallbackImage" :alt="product.name" /><div><strong>{{ product.name }}</strong><span>{{ product.subtitle || `商品 #${product.id}` }}</span></div></div></td>
+              <td><div class="product-cell"><img :src="product.coverUrl || fallbackImage" :alt="product.name" /><div><strong>{{ product.name }}</strong><span>{{ product.subtitle || t('admin.products.fallbackName', { id: product.id }) }}</span></div></div></td>
               <td><strong>#{{ product.categoryId || '—' }}</strong></td>
               <td>{{ product.skuCount ?? '—' }}</td>
               <td class="admin-money">{{ formatCurrency(product.minPrice) }}</td>
               <td><AdminStatusBadge :status="product.status" :labels="productLabels" /></td>
               <td class="admin-muted">{{ formatDate(product.updateTime) }}</td>
-              <td><div class="admin-actions"><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}`">详情 / SKU</RouterLink><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}/edit`">编辑</RouterLink><button class="admin-text-button" type="button" @click="requestStatusChange(product)">{{ product.status === 'ON_SHELF' ? '下架' : '上架' }}</button></div></td>
+              <td><div class="admin-actions"><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}`">{{ t('admin.products.detailSku') }}</RouterLink><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}/edit`">{{ t('admin.common.edit') }}</RouterLink><button class="admin-text-button" type="button" @click="requestStatusChange(product)">{{ product.status === 'ON_SHELF' ? t('admin.common.takeOffShelf') : t('admin.common.putOnShelf') }}</button></div></td>
             </tr>
           </tbody>
         </table>
@@ -118,9 +121,9 @@ onMounted(load)
 
     <AdminConfirmDialog
       :open="Boolean(statusTarget)"
-      title="商品状态确认"
+      :title="t('admin.products.statusConfirm')"
       :message="statusMessage"
-      :confirm-text="statusTarget?.nextStatus === 'ON_SHELF' ? '确认上架' : '确认下架'"
+      :confirm-text="statusTarget?.nextStatus === 'ON_SHELF' ? t('admin.products.confirmOnShelf') : t('admin.products.confirmOffShelf')"
       :danger="statusTarget?.nextStatus === 'OFF_SHELF'"
       :busy="statusBusy"
       @cancel="statusTarget = null"

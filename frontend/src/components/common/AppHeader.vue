@@ -61,9 +61,9 @@ watch(isAuthenticated, async (authenticated) => {
         <label class="language-picker">
           <span class="sr-only">{{ t('header.language') }}</span>
           <select :value="locale.locale" :aria-label="t('header.language')" @change="locale.setLocale($event.target.value)">
-            <option value="zh">中文</option>
-            <option value="en">EN</option>
-            <option value="ja">日本語</option>
+            <option value="zh-CN">中文</option>
+            <option value="en-US">English</option>
+            <option value="ja-JP">日本語</option>
           </select>
         </label>
         <RouterLink class="account-action" :to="isAuthenticated ? '/profile' : '/login'" :aria-label="t('header.account')">

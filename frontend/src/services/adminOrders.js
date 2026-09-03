@@ -8,4 +8,8 @@ export const adminOrderApi = {
   async getDetail(orderNo) {
     return responseData(await http.get(`/admin/orders/${encodeURIComponent(orderNo)}`))
   },
+
+  async shipOrder(orderId) {
+    return responseData(await http.patch(`/orders/${encodeURIComponent(orderId)}/ship`))
+  },
 }

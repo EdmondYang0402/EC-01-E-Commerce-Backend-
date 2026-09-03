@@ -1,20 +1,28 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { errorMessage } from '../services/http'
 import { useAuthStore } from '../stores/auth'
+import { useLocaleStore } from '../stores/locale'
 import '../assets/styles/admin.css'
 
 const router = useRouter()
 const auth = useAuthStore()
+const locale = useLocaleStore()
+const t = (key, params) => locale.t(key, params)
 const menuOpen = ref(false)
 
-const navigation = [
-  { label: '商品管理', caption: 'Products', to: '/admin/products', mark: 'P' },
-  { label: '分类管理', caption: 'Categories', to: '/admin/categories', mark: 'C' },
-  { label: '订单管理', caption: 'Orders', to: '/admin/orders', mark: 'O' },
-  { label: '用户管理', caption: 'Users', to: '/admin/users', mark: 'U' },
+const navigation = computed(() => [
+  { label: t('admin.nav.products'), to: '/admin/products', mark: 'P' },
+  { label: t('admin.nav.categories'), to: '/admin/categories', mark: 'C' },
+  { label: t('admin.nav.orders'), to: '/admin/orders', mark: 'O' },
+  { label: t('admin.nav.users'), to: '/admin/users', mark: 'U' },
+])
+const localeOptions = [
+  { value: 'zh-CN', label: '中文' },
+  { value: 'en-US', label: 'English' },
+  { value: 'ja-JP', label: '日本語' },
 ]
 
 const closeMenu = () => { menuOpen.value = false }
@@ -22,7 +30,7 @@ const logout = async () => {
   try {
     await auth.logout()
   } catch (error) {
-    ElMessage.warning(errorMessage(error, '会话已在本地清除'))
+    ElMessage.warning(errorMessage(error, t('admin.message.sessionCleared')))
   }
   await router.replace('/login')
 }
@@ -32,14 +40,21 @@ const logout = async () => {
   <div class="admin-layout">
     <header class="admin-topbar">
       <div class="admin-topbar__brand">
-        <button class="admin-menu-toggle" type="button" aria-label="打开后台菜单" @click="menuOpen = !menuOpen">☰</button>
+        <button class="admin-menu-toggle" type="button" :aria-label="t('admin.menu.open')" @click="menuOpen = !menuOpen">☰</button>
         <RouterLink to="/admin/products">EC-01</RouterLink>
-        <span>INTERNAL</span>
+        <span>{{ t('admin.layout.internal') }}</span>
       </div>
       <div class="admin-topbar__actions">
+        <div class="admin-language-switcher" :aria-label="t('admin.language')" role="group">
+          <template v-for="(option, index) in localeOptions" :key="option.value">
+            <span v-if="index" aria-hidden="true">|</span>
+            <button type="button" :class="{ active: locale.locale === option.value }" @click="locale.setLocale(option.value)">{{ option.label }}</button>
+          </template>
+        </div>
         <span class="admin-identity">{{ auth.displayName }}</span>
-        <RouterLink to="/">返回商城</RouterLink>
-        <button type="button" @click="logout">退出登录</button>
+        <RouterLink class="admin-password-link" to="/admin/security">{{ t('admin.action.changePassword') }}</RouterLink>
+        <RouterLink class="admin-shop-link" to="/">{{ t('admin.action.storefront') }}</RouterLink>
+        <button type="button" @click="logout">{{ t('admin.action.logout') }}</button>
       </div>
     </header>
 
@@ -47,19 +62,19 @@ const logout = async () => {
       <div v-if="menuOpen" class="admin-sidebar-backdrop" @click="closeMenu" />
       <aside class="admin-sidebar" :class="{ 'admin-sidebar--open': menuOpen }">
         <div class="admin-sidebar__intro">
-          <span>ADMIN CONSOLE</span>
-          <strong>管理工作台</strong>
-          <p>保持商品、订单与用户信息清晰可控。</p>
+          <span>{{ t('admin.layout.adminLabel') }}</span>
+          <strong>{{ t('admin.layout.console') }}</strong>
+          <p>{{ t('admin.layout.intro') }}</p>
         </div>
-        <nav aria-label="后台管理导航">
+        <nav :aria-label="t('admin.layout.console')">
           <RouterLink v-for="item in navigation" :key="item.to" :to="item.to" @click="closeMenu">
             <i>{{ item.mark }}</i>
-            <span><strong>{{ item.label }}</strong><small>{{ item.caption }}</small></span>
+            <span><strong>{{ item.label }}</strong></span>
           </RouterLink>
         </nav>
         <footer>
-          <span>EC-01 / PHASE 2</span>
-          <p>Internal management mode</p>
+          <span>{{ t('admin.layout.phase') }}</span>
+          <p>{{ t('admin.layout.mode') }}</p>
         </footer>
       </aside>
 
@@ -77,6 +92,10 @@ const logout = async () => {
 .admin-topbar__actions { font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .admin-topbar__actions a, .admin-topbar__actions button { padding: 7px 3px; color: var(--ink); background: none; border: 0; text-decoration: none; cursor: pointer; }
 .admin-identity { max-width: 160px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
+.admin-language-switcher { display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid var(--line); }
+.admin-language-switcher span { color: var(--line-dark, #aaa); }
+.admin-language-switcher button { color: var(--muted); font-size: 10px; text-transform: none; }
+.admin-language-switcher button.active { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 .admin-layout__body { display: grid; min-height: calc(100vh - 68px); grid-template-columns: 218px minmax(0, 1fr); }
 .admin-sidebar { position: sticky; top: 68px; display: flex; height: calc(100vh - 68px); flex-direction: column; padding: 30px 20px 22px; background: var(--ink); }
 .admin-sidebar__intro { padding: 0 7px 28px; color: var(--white); border-bottom: 1px solid rgb(255 255 255 / 16%); }
@@ -105,5 +124,6 @@ const logout = async () => {
   .admin-sidebar--open { transform: translateX(0); }
   .admin-sidebar-backdrop { position: fixed; z-index: 50; display: block; inset: 60px 0 0; background: rgb(21 21 21 / 28%); }
 }
-@media (max-width: 440px) { .admin-topbar__actions a { display: none; } }
+@media (max-width: 440px) { .admin-shop-link { display: none; } }
+@media (max-width: 620px) { .admin-password-link, .admin-identity { display: none; } .admin-language-switcher { gap: 3px; padding-right: 3px; } }
 </style>

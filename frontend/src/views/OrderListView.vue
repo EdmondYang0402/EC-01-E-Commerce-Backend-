@@ -16,12 +16,12 @@ const t = (key, params) => locale.t(key, params)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
 
 const formatCurrency = (value) => new Intl.NumberFormat(
-  locale.locale === 'zh' ? 'zh-CN' : locale.locale,
+  locale.locale,
   { style: 'currency', currency: 'CNY' },
 ).format(Number(value || 0))
 
 const formatDate = (value) => value
-  ? new Intl.DateTimeFormat(locale.locale === 'zh' ? 'zh-CN' : locale.locale, {
+  ? new Intl.DateTimeFormat(locale.locale, {
       dateStyle: 'medium', timeStyle: 'short',
     }).format(new Date(value))
   : '—'

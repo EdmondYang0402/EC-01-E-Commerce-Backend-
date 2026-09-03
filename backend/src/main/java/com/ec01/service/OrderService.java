@@ -15,4 +15,8 @@ public interface OrderService {
     OrderDetailVO getOrderDetail(String orderNo);
 
     void cancelOrder(String orderNo);
+
+    void shipOrder(Long orderId);
+
+    void confirmReceive(Long orderId);
 }
