@@ -2,12 +2,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import fallbackImage from '../../assets/products/chair.png'
+import SafeImage from '../../components/common/SafeImage.vue'
 import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog.vue'
 import AdminPagination from '../../components/admin/AdminPagination.vue'
 import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminProductApi } from '../../services/adminProducts'
 import { errorMessage } from '../../services/http'
 import { useLocaleStore } from '../../stores/locale'
+import { formatDateTime, formatMoney } from '../../utils/formatters'
 
 const locale = useLocaleStore()
 const t = (key, params) => locale.t(key, params)
@@ -28,12 +30,11 @@ const statusMessage = computed(() => {
   return t('admin.products.statusMessage', { action, name: statusTarget.value.product.name })
 })
 
-const formatCurrency = (value) => value == null ? '—' : new Intl.NumberFormat(locale.locale, { style: 'currency', currency: 'CNY' }).format(Number(value))
-const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
-
 const load = async () => {
   loading.value = true
   error.value = ''
+  records.value = []
+  total.value = 0
   try {
     const result = await adminProductApi.getPage({
       page: page.value,
@@ -96,8 +97,8 @@ onMounted(load)
       <div class="admin-filter-actions"><button class="admin-primary-button" type="submit">{{ t('admin.common.search') }}</button><button class="admin-secondary-button" type="button" @click="reset">{{ t('admin.common.reset') }}</button></div>
     </form>
 
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-if="loading" class="admin-state">{{ t('admin.products.loading') }}</div>
+    <div v-else-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-else-if="!records.length" class="admin-state">{{ t('admin.products.empty') }}</div>
     <template v-else>
       <div class="admin-table-wrap">
@@ -105,12 +106,12 @@ onMounted(load)
           <thead><tr><th>{{ t('admin.products.product') }}</th><th>{{ t('admin.products.category') }}</th><th>SKU</th><th>{{ t('admin.products.minPrice') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.common.updatedAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead>
           <tbody>
             <tr v-for="product in records" :key="product.id">
-              <td><div class="product-cell"><img :src="product.coverUrl || fallbackImage" :alt="product.name" /><div><strong>{{ product.name }}</strong><span>{{ product.subtitle || t('admin.products.fallbackName', { id: product.id }) }}</span></div></div></td>
+              <td><div class="product-cell"><SafeImage :src="product.coverUrl" :fallback="fallbackImage" :alt="product.name" /><div><strong>{{ product.name }}</strong><span>{{ product.subtitle || t('admin.products.fallbackName', { id: product.id }) }}</span></div></div></td>
               <td><strong>#{{ product.categoryId || '—' }}</strong></td>
               <td>{{ product.skuCount ?? '—' }}</td>
-              <td class="admin-money">{{ formatCurrency(product.minPrice) }}</td>
+              <td class="admin-money">{{ product.minPrice == null ? '—' : formatMoney(product.minPrice) }}</td>
               <td><AdminStatusBadge :status="product.status" :labels="productLabels" /></td>
-              <td class="admin-muted">{{ formatDate(product.updateTime) }}</td>
+              <td class="admin-muted">{{ formatDateTime(product.updateTime) }}</td>
               <td><div class="admin-actions"><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}`">{{ t('admin.products.detailSku') }}</RouterLink><RouterLink class="admin-text-button" :to="`/admin/products/${product.id}/edit`">{{ t('admin.common.edit') }}</RouterLink><button class="admin-text-button" type="button" @click="requestStatusChange(product)">{{ product.status === 'ON_SHELF' ? t('admin.common.takeOffShelf') : t('admin.common.putOnShelf') }}</button></div></td>
             </tr>
           </tbody>
@@ -135,7 +136,7 @@ onMounted(load)
 <style scoped>
 .product-table { min-width: 1040px; }
 .product-cell { display: grid; min-width: 270px; grid-template-columns: 62px minmax(0, 1fr); gap: 13px; align-items: center; }
-.product-cell img { width: 62px; height: 56px; object-fit: cover; background: var(--paper); }
+.product-cell :deep(img) { width: 62px; height: 56px; object-fit: cover; background: var(--paper); }
 .product-cell div { display: grid; gap: 5px; }
 .product-cell strong { font-size: 12px; }
 .product-cell span { max-width: 260px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }

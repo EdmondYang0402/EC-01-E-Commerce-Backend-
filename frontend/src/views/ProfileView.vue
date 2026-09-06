@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PageState from '../components/common/PageState.vue'
 import { errorMessage } from '../services/http'
 import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
@@ -13,8 +14,11 @@ const router = useRouter()
 const loading = ref(true)
 const saving = ref(false)
 const passwordSaving = ref(false)
+const loggingOut = ref(false)
+const loadError = ref('')
 const form = reactive({ username: '', nickname: '', email: '', phone: '', avatarUrl: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmNewPassword: '' })
+const passwordMismatch = computed(() => Boolean(passwordForm.confirmNewPassword) && passwordForm.newPassword !== passwordForm.confirmNewPassword)
 
 const fillForm = (profile) => {
   form.username = profile?.username || ''
@@ -24,15 +28,18 @@ const fillForm = (profile) => {
   form.avatarUrl = profile?.avatarUrl || ''
 }
 
-onMounted(async () => {
+const loadProfile = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     fillForm(await auth.fetchProfile())
   } catch (error) {
-    ElMessage.error(errorMessage(error, t('profile.loadFailed')))
+    loadError.value = errorMessage(error, t('profile.loadFailed'))
   } finally {
     loading.value = false
   }
-})
+}
+onMounted(loadProfile)
 
 const save = async () => {
   saving.value = true
@@ -53,12 +60,15 @@ const save = async () => {
 }
 
 const logout = async () => {
+  if (loggingOut.value) return
+  loggingOut.value = true
   try {
     await auth.logout()
   } catch (error) {
     ElMessage.warning(errorMessage(error, t('profile.sessionCleared')))
   }
   await router.replace('/')
+  loggingOut.value = false
 }
 
 const changePassword = async () => {
@@ -107,10 +117,11 @@ const changePassword = async () => {
         <p class="eyebrow">{{ t('profile.eyebrow') }}</p>
         <h1>{{ t('profile.title') }}</h1>
       </div>
-      <el-button plain @click="logout">{{ t('profile.signOut') }}</el-button>
+      <el-button plain :loading="loggingOut" @click="logout">{{ t('profile.signOut') }}</el-button>
     </div>
 
-    <p v-if="loading" class="state">{{ t('profile.loading') }}</p>
+    <PageState v-if="loading" :title="t('profile.loading')" />
+    <PageState v-else-if="loadError" kind="error" :title="loadError" :action-label="t('common.retry')" @action="loadProfile" />
     <form v-else class="profile-form" @submit.prevent="save">
       <label>{{ t('profile.username') }}<el-input v-model="form.username" disabled /></label>
       <label>{{ t('profile.nickname') }}<el-input v-model="form.nickname" maxlength="50" /></label>
@@ -132,7 +143,7 @@ const changePassword = async () => {
       <form class="password-form" @submit.prevent="changePassword">
         <label>{{ t('security.currentPassword') }}<el-input v-model="passwordForm.oldPassword" type="password" show-password autocomplete="current-password" /></label>
         <label>{{ t('security.newPassword') }}<el-input v-model="passwordForm.newPassword" type="password" show-password autocomplete="new-password" /></label>
-        <label>{{ t('security.confirmPassword') }}<el-input v-model="passwordForm.confirmNewPassword" type="password" show-password autocomplete="new-password" /></label>
+        <label>{{ t('security.confirmPassword') }}<el-input v-model="passwordForm.confirmNewPassword" type="password" show-password autocomplete="new-password" :class="{ 'is-mismatch': passwordMismatch }" /><small v-if="passwordMismatch" class="field-error">{{ t('security.mismatch') }}</small></label>
         <p class="password-hint">{{ t('security.passwordHint') }}</p>
         <div class="password-actions"><el-button native-type="submit" :loading="passwordSaving">{{ t('security.submit') }}</el-button></div>
       </form>
@@ -161,6 +172,7 @@ label { display: grid; gap: 8px; font-size: 11px; font-weight: 650; }
 .password-hint { grid-column: 1 / -1; margin: -4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .password-actions { grid-column: 1 / -1; }
 .password-actions .el-button { width: 180px; height: 42px; color: white; background: var(--ink); border-color: var(--ink); }
+.field-error { color: var(--red); font-size: 10px; }.is-mismatch :deep(.el-input__wrapper) { box-shadow: 0 0 0 1px var(--red) inset; }
 @media (max-width: 620px) { .profile-form { grid-template-columns: 1fr; } .full { grid-column: auto; } }
 @media (max-width: 620px) { .security-section > header { align-items: flex-start; flex-direction: column; } .password-form { grid-template-columns: 1fr; padding: 18px; } .password-form label:first-child, .password-hint, .password-actions { grid-column: auto; } }
 </style>

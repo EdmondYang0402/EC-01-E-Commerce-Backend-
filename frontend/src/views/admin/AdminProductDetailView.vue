@@ -3,11 +3,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import fallbackImage from '../../assets/products/chair.png'
+import SafeImage from '../../components/common/SafeImage.vue'
 import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog.vue'
 import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminProductApi } from '../../services/adminProducts'
 import { errorMessage } from '../../services/http'
 import { useLocaleStore } from '../../stores/locale'
+import { formatDateTime, formatMoney } from '../../utils/formatters'
 
 const route = useRoute()
 const locale = useLocaleStore()
@@ -33,8 +35,7 @@ const confirmMessage = computed(() => {
   return t('admin.productDetail.skuConfirm', { action, code: confirmTarget.value.item.skuCode })
 })
 
-const formatCurrency = (value) => new Intl.NumberFormat(locale.locale, { style: 'currency', currency: 'CNY' }).format(Number(value || 0))
-const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
+const stockLevel = (stock) => Number(stock) <= 0 ? 'empty' : Number(stock) <= 5 ? 'low' : 'normal'
 const formatSpec = (value) => {
   if (!value) return t('admin.productDetail.standardSpec')
   try { return Object.entries(JSON.parse(value)).map(([key, item]) => `${key}: ${item}`).join(' · ') }
@@ -44,6 +45,7 @@ const formatSpec = (value) => {
 const load = async () => {
   loading.value = true
   error.value = ''
+  detail.value = null
   try { detail.value = await adminProductApi.getDetail(productId.value) }
   catch (requestError) { error.value = errorMessage(requestError, t('admin.productDetail.loadFailed')); detail.value = null }
   finally { loading.value = false }
@@ -103,18 +105,18 @@ watch(() => route.params.productId, load)
 <template>
   <section class="admin-page">
     <RouterLink class="admin-back" to="/admin/products">{{ t('admin.productDetail.back') }}</RouterLink>
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-if="loading" class="admin-state">{{ t('admin.productDetail.loading') }}</div>
+    <div v-else-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-else-if="!detail" class="admin-state">{{ t('admin.productDetail.unavailable') }}</div>
     <template v-else>
       <header class="detail-hero">
-        <img :src="detail.coverUrl || fallbackImage" :alt="detail.name" />
+        <SafeImage :src="detail.coverUrl" :fallback="fallbackImage" :alt="detail.name" eager />
         <div class="detail-hero__copy">
           <p class="admin-eyebrow">{{ t('admin.common.productId', { id: detail.id }) }}</p>
           <div class="detail-title"><h1>{{ detail.name }}</h1><AdminStatusBadge :status="detail.status" :labels="productLabels" /></div>
           <p class="subtitle">{{ detail.subtitle || t('admin.productDetail.noSubtitle') }}</p>
           <p class="description">{{ detail.description || t('admin.productDetail.noDescription') }}</p>
-          <div class="detail-meta"><span>{{ t('admin.productDetail.category', { id: detail.categoryId || '—' }) }}</span><span>{{ t('admin.productDetail.createdAt', { date: formatDate(detail.createTime) }) }}</span><span>{{ t('admin.productDetail.updatedAt', { date: formatDate(detail.updateTime) }) }}</span></div>
+          <div class="detail-meta"><span>{{ t('admin.productDetail.category', { id: detail.categoryId || '—' }) }}</span><span>{{ t('admin.productDetail.createdAt', { date: formatDateTime(detail.createTime) }) }}</span><span>{{ t('admin.productDetail.updatedAt', { date: formatDateTime(detail.updateTime) }) }}</span></div>
           <div class="admin-actions"><RouterLink class="admin-primary-button" :to="`/admin/products/${detail.id}/edit`">{{ t('admin.productDetail.editBase') }}</RouterLink><button class="admin-secondary-button" type="button" @click="requestProductStatus">{{ detail.status === 'ON_SHELF' ? t('admin.productDetail.takeOffShelf') : t('admin.productDetail.putOnShelf') }}</button></div>
         </div>
       </header>
@@ -125,7 +127,7 @@ watch(() => route.params.productId, load)
         <div v-else class="admin-table-wrap">
           <table class="admin-table sku-table">
             <thead><tr><th>{{ t('admin.productDetail.skuCode') }}</th><th>{{ t('admin.productDetail.spec') }}</th><th>{{ t('admin.productDetail.price') }}</th><th>{{ t('admin.productDetail.stock') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.common.updatedAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead>
-            <tbody><tr v-for="sku in detail.skus" :key="sku.id"><td><strong>{{ sku.skuCode }}</strong></td><td>{{ formatSpec(sku.specJson) }}</td><td class="admin-money">{{ formatCurrency(sku.price) }}</td><td>{{ sku.stock }}</td><td><AdminStatusBadge :status="sku.status" :labels="skuLabels" /></td><td class="admin-muted">{{ formatDate(sku.updateTime) }}</td><td><div class="admin-actions"><button class="admin-text-button" type="button" @click="openEditSku(sku)">{{ t('admin.common.edit') }}</button><button class="admin-text-button" type="button" @click="requestSkuStatus(sku)">{{ sku.status === 'ENABLED' ? t('admin.common.disable') : t('admin.common.enable') }}</button></div></td></tr></tbody>
+            <tbody><tr v-for="sku in detail.skus" :key="sku.id"><td><strong>{{ sku.skuCode }}</strong></td><td>{{ formatSpec(sku.specJson) }}</td><td class="admin-money">{{ formatMoney(sku.price) }}</td><td><span class="stock-level" :class="`stock-level--${stockLevel(sku.stock)}`">{{ sku.stock }}</span></td><td><AdminStatusBadge :status="sku.status" :labels="skuLabels" /></td><td class="admin-muted">{{ formatDateTime(sku.updateTime) }}</td><td><div class="admin-actions"><button class="admin-text-button" type="button" @click="openEditSku(sku)">{{ t('admin.common.edit') }}</button><button class="admin-text-button" type="button" @click="requestSkuStatus(sku)">{{ sku.status === 'ENABLED' ? t('admin.common.disable') : t('admin.common.enable') }}</button></div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -153,7 +155,7 @@ watch(() => route.params.productId, load)
 <style scoped>
 .admin-error-banner button { margin-left: 8px; }
 .detail-hero { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr); gap: clamp(30px, 5vw, 72px); padding: clamp(22px, 3vw, 40px); background: var(--white); border: 1px solid var(--line); }
-.detail-hero > img { width: 100%; aspect-ratio: 1.15; object-fit: cover; background: var(--paper); }
+.detail-hero > :deep(img) { width: 100%; aspect-ratio: 1.15; object-fit: cover; background: var(--paper); }
 .detail-hero__copy { align-self: center; }
 .detail-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .detail-title h1 { font-size: clamp(34px, 4vw, 56px); }
@@ -166,6 +168,7 @@ watch(() => route.params.productId, load)
 .sku-section header span { margin-left: 12px; color: var(--muted); font-size: 10px; }
 .sku-empty { min-height: 180px; }
 .sku-table { min-width: 930px; }
+.stock-level { display: inline-flex; min-width: 30px; justify-content: center; padding: 4px 7px; font-weight: 750; background: #edf5ef; border-radius: 99px; }.stock-level--low { color: #8b6413; background: #fbf4df; }.stock-level--empty { color: #8c2a20; background: #faecea; }
 .sku-editor-backdrop { position: fixed; z-index: 100; display: flex; justify-content: flex-end; inset: 0; background: rgb(21 21 21 / 32%); }
 .sku-editor { width: min(520px, 100%); height: 100%; padding: 30px; overflow-y: auto; background: var(--white); box-shadow: -18px 0 60px rgb(21 21 21 / 12%); }
 .sku-editor > header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid var(--ink); }

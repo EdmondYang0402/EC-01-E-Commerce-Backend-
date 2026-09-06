@@ -29,6 +29,7 @@ const roots = computed(() => categories.value
 const load = async () => {
   loading.value = true
   error.value = ''
+  categories.value = []
   try { categories.value = await adminCategoryApi.getAll() || [] }
   catch (requestError) { error.value = errorMessage(requestError, t('admin.categories.loadFailed')) }
   finally { loading.value = false }
@@ -104,8 +105,8 @@ onMounted(load)
       <button class="admin-primary-button" type="button" @click="openCreate()">{{ t('admin.categories.addRoot') }}</button>
     </header>
 
-    <div v-if="error" class="admin-error-banner">{{ error }}</div>
     <div v-if="loading" class="admin-state">{{ t('admin.categories.loading') }}</div>
+    <div v-else-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-else-if="!roots.length" class="admin-state">{{ t('admin.categories.empty') }}</div>
     <div v-else class="category-groups">
       <article v-for="root in roots" :key="root.id" class="category-group">

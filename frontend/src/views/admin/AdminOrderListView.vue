@@ -7,6 +7,7 @@ import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminOrderApi } from '../../services/adminOrders'
 import { errorMessage } from '../../services/http'
 import { useLocaleStore } from '../../stores/locale'
+import { formatDateTime, formatMoney } from '../../utils/formatters'
 
 const locale = useLocaleStore()
 const t = (key, params) => locale.t(key, params)
@@ -26,11 +27,11 @@ const statusLabels = computed(() => ({
 const statuses = computed(() => ['PENDING_PAYMENT', 'PAID', 'SHIPPED', 'COMPLETED', 'CANCELLED'].map((value) => [value, statusLabels.value[value]]))
 const isPaid = (status) => status === 'PAID' || Number(status) === 1
 
-const formatCurrency = (value) => new Intl.NumberFormat(locale.locale, { style: 'currency', currency: 'CNY' }).format(Number(value || 0))
-const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 const load = async () => {
   loading.value = true
   error.value = ''
+  records.value = []
+  total.value = 0
   try {
     const result = await adminOrderApi.getPage({ page: page.value, size, orderNo: filters.orderNo.trim() || undefined, status: filters.status || undefined, userId: filters.userId || undefined })
     records.value = result?.records || []
@@ -68,11 +69,11 @@ onMounted(load)
       <label class="admin-field"><span>{{ t('admin.orders.userId') }}</span><input v-model="filters.userId" min="1" type="number" :placeholder="t('admin.orders.allUsers')" /></label>
       <div class="admin-filter-actions"><button class="admin-primary-button" type="submit">{{ t('admin.common.search') }}</button><button class="admin-secondary-button" type="button" @click="reset">{{ t('admin.common.reset') }}</button></div>
     </form>
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-if="loading" class="admin-state">{{ t('admin.orders.loading') }}</div>
+    <div v-else-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-else-if="!records.length" class="admin-state">{{ t('admin.orders.empty') }}</div>
     <template v-else>
-      <div class="admin-table-wrap"><table class="admin-table order-table"><thead><tr><th>{{ t('admin.orders.orderNumber') }}</th><th>{{ t('admin.orders.user') }}</th><th>{{ t('admin.orders.amount') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.orders.createdAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead><tbody><tr v-for="order in records" :key="order.id"><td><strong>{{ order.orderNo }}</strong><span class="order-id">#{{ order.id }}</span></td><td>{{ t('admin.common.userId', { id: order.userId }) }}</td><td class="admin-money">{{ formatCurrency(order.totalAmount) }}</td><td><AdminStatusBadge :status="order.status" :labels="statusLabels" /></td><td class="admin-muted">{{ formatDate(order.createTime) }}</td><td><div class="admin-actions"><RouterLink class="admin-text-button" :to="`/admin/orders/${order.orderNo}`">{{ t('admin.common.details') }} →</RouterLink><button v-if="isPaid(order.status)" class="admin-text-button" type="button" @click="shipTarget = order">{{ t('admin.common.ship') }}</button></div></td></tr></tbody></table></div>
+      <div class="admin-table-wrap"><table class="admin-table order-table"><thead><tr><th>{{ t('admin.orders.orderNumber') }}</th><th>{{ t('admin.orders.user') }}</th><th>{{ t('admin.orders.amount') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.orders.createdAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead><tbody><tr v-for="order in records" :key="order.id"><td><strong>{{ order.orderNo }}</strong><span class="order-id">#{{ order.id }}</span></td><td>{{ t('admin.common.userId', { id: order.userId }) }}</td><td class="admin-money">{{ formatMoney(order.totalAmount) }}</td><td><AdminStatusBadge :status="order.status" :labels="statusLabels" /></td><td class="admin-muted">{{ formatDateTime(order.createTime) }}</td><td><div class="admin-actions"><RouterLink class="admin-text-button" :to="`/admin/orders/${order.orderNo}`">{{ t('admin.common.details') }} →</RouterLink><button v-if="isPaid(order.status)" class="admin-text-button" type="button" @click="shipTarget = order">{{ t('admin.common.ship') }}</button></div></td></tr></tbody></table></div>
       <AdminPagination :page="page" :size="size" :total="total" @change="changePage" />
     </template>
     <AdminConfirmDialog

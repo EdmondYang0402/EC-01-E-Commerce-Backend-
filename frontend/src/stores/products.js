@@ -13,6 +13,8 @@ export const useProductStore = defineStore('products', {
   actions: {
     async fetchPage(params = {}) {
       this.loading = true
+      this.records = []
+      this.total = 0
       try {
         const page = await productApi.getPage(params)
         this.records = page?.records || []

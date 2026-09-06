@@ -7,6 +7,7 @@ import AdminStatusBadge from '../../components/admin/AdminStatusBadge.vue'
 import { adminUserApi } from '../../services/adminUsers'
 import { errorMessage } from '../../services/http'
 import { useLocaleStore } from '../../stores/locale'
+import { formatDateTime } from '../../utils/formatters'
 
 const locale = useLocaleStore()
 const t = (key, params) => locale.t(key, params)
@@ -26,9 +27,9 @@ const confirmMessage = computed(() => {
   return t('admin.users.confirmMessage', { action, name: statusTarget.value.user.username })
 })
 const initials = (user) => (user.nickname || user.username || '?').trim().slice(0, 1).toUpperCase()
-const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 const load = async () => {
   loading.value = true; error.value = ''
+  records.value = []; total.value = 0
   try {
     const result = await adminUserApi.getPage({ page: page.value, size, keyword: filters.keyword.trim() || undefined, status: filters.status || undefined })
     records.value = result?.records || []; total.value = Number(result?.total || 0)
@@ -56,10 +57,10 @@ onMounted(load)
   <section class="admin-page">
     <header class="admin-page__header"><div><p class="admin-eyebrow">{{ t('admin.users.eyebrow') }}</p><h1>{{ t('admin.users.title') }}</h1><p class="admin-page__subtitle">{{ t('admin.users.subtitle') }}</p></div><span class="user-count">{{ t('admin.users.count', { count: total }) }}</span></header>
     <form class="admin-filter-card user-filters" @submit.prevent="search"><label class="admin-field"><span>{{ t('admin.users.keyword') }}</span><input v-model="filters.keyword" maxlength="100" :placeholder="t('admin.users.keywordPlaceholder')" /></label><label class="admin-field"><span>{{ t('admin.users.userStatus') }}</span><select v-model="filters.status"><option value="">{{ t('admin.common.allStatuses') }}</option><option value="NORMAL">{{ t('admin.users.normal') }}</option><option value="DISABLED">{{ t('admin.common.disabled') }}</option></select></label><div class="admin-filter-actions"><button class="admin-primary-button" type="submit">{{ t('admin.common.search') }}</button><button class="admin-secondary-button" type="button" @click="reset">{{ t('admin.common.reset') }}</button></div></form>
-    <div v-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-if="loading" class="admin-state">{{ t('admin.users.loading') }}</div>
+    <div v-else-if="error" class="admin-error-banner">{{ error }} <button class="admin-text-button" type="button" @click="load">{{ t('admin.common.reload') }}</button></div>
     <div v-else-if="!records.length" class="admin-state">{{ t('admin.users.empty') }}</div>
-    <template v-else><div class="admin-table-wrap"><table class="admin-table user-table"><thead><tr><th>{{ t('admin.users.user') }}</th><th>{{ t('admin.users.contact') }}</th><th>{{ t('admin.users.role') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.users.registeredAt') }}</th><th>{{ t('admin.common.updatedAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead><tbody><tr v-for="user in records" :key="user.id"><td><div class="user-cell"><img v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.username" /><span v-else>{{ initials(user) }}</span><div><strong>{{ user.username }}</strong><small>{{ user.nickname || t('admin.users.fallbackName', { id: user.id }) }}</small></div></div></td><td><div class="contact-cell"><span>{{ user.email || '—' }}</span><small>{{ user.phone || t('admin.users.notProvidedPhone') }}</small></div></td><td><strong>{{ user.role || 'USER' }}</strong></td><td><AdminStatusBadge :status="user.status" :labels="statusLabels" /></td><td class="admin-muted">{{ formatDate(user.createTime) }}</td><td class="admin-muted">{{ formatDate(user.updateTime) }}</td><td><button class="admin-text-button" type="button" @click="requestStatus(user)">{{ user.status === 'NORMAL' ? t('admin.users.disableUser') : t('admin.users.enableUser') }}</button></td></tr></tbody></table></div><AdminPagination :page="page" :size="size" :total="total" @change="changePage" /></template>
+    <template v-else><div class="admin-table-wrap"><table class="admin-table user-table"><thead><tr><th>{{ t('admin.users.user') }}</th><th>{{ t('admin.users.contact') }}</th><th>{{ t('admin.users.role') }}</th><th>{{ t('admin.common.status') }}</th><th>{{ t('admin.users.registeredAt') }}</th><th>{{ t('admin.common.updatedAt') }}</th><th>{{ t('admin.common.actions') }}</th></tr></thead><tbody><tr v-for="user in records" :key="user.id"><td><div class="user-cell"><img v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.username" loading="lazy" /><span v-else>{{ initials(user) }}</span><div><strong>{{ user.username }}</strong><small>{{ user.nickname || t('admin.users.fallbackName', { id: user.id }) }}</small></div></div></td><td><div class="contact-cell"><span>{{ user.email || '—' }}</span><small>{{ user.phone || t('admin.users.notProvidedPhone') }}</small></div></td><td><strong>{{ user.role || 'USER' }}</strong></td><td><AdminStatusBadge :status="user.status" :labels="statusLabels" /></td><td class="admin-muted">{{ formatDateTime(user.createTime) }}</td><td class="admin-muted">{{ formatDateTime(user.updateTime) }}</td><td><button class="admin-text-button" type="button" @click="requestStatus(user)">{{ user.status === 'NORMAL' ? t('admin.users.disableUser') : t('admin.common.enable') }}</button></td></tr></tbody></table></div><AdminPagination :page="page" :size="size" :total="total" @change="changePage" /></template>
     <AdminConfirmDialog :open="Boolean(statusTarget)" :title="t('admin.users.statusConfirm')" :message="confirmMessage" :confirm-text="statusTarget?.nextStatus === 'DISABLED' ? t('admin.users.confirmDisable') : t('admin.users.confirmEnable')" :danger="statusTarget?.nextStatus === 'DISABLED'" :busy="statusBusy" @cancel="statusTarget = null" @confirm="confirmStatus" />
   </section>
 </template>

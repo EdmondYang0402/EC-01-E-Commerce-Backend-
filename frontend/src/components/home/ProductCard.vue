@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import fallbackImage from '../../assets/products/chair.png'
 import { useLocaleStore } from '../../stores/locale'
+import { formatMoney } from '../../utils/formatters'
+import SafeImage from '../common/SafeImage.vue'
 import UiIcon from '../common/UiIcon.vue'
 
 const props = defineProps({
@@ -13,15 +15,21 @@ defineEmits(['favorite'])
 
 const imageUrl = computed(() => props.product.coverUrl || props.product.image || fallbackImage)
 const price = computed(() => Number(props.product.minPrice ?? props.product.price ?? 0))
-const formatPrice = (value) => `¥${Number(value).toFixed(2)}`
 const locale = useLocaleStore()
+const stock = computed(() => props.product.stock == null ? null : Number(props.product.stock))
+const stockText = computed(() => {
+  if (stock.value == null || Number.isNaN(stock.value)) return ''
+  if (stock.value <= 0) return locale.t('detail.outOfStock')
+  if (stock.value <= 5) return locale.t('detail.lowStock', { count: stock.value })
+  return locale.t('detail.inStock', { count: stock.value })
+})
 </script>
 
 <template>
   <article class="product-card">
     <div class="product-card__image-wrap">
       <RouterLink :to="`/products/${product.id}`" :aria-label="locale.t('product.view', { name: product.name })">
-        <img :src="imageUrl" :alt="product.name" loading="lazy" />
+        <SafeImage :src="imageUrl" :fallback="fallbackImage" :alt="product.name" />
       </RouterLink>
       <button class="favorite" :class="{ 'is-active': favorite }" type="button" :aria-label="locale.t('product.favorite', { name: product.name })" @click="$emit('favorite', product.id)">
         <UiIcon name="heart" :size="17" />
@@ -30,8 +38,9 @@ const locale = useLocaleStore()
     <div class="product-card__body">
       <h3><RouterLink :to="`/products/${product.id}`">{{ product.name }}</RouterLink></h3>
       <p>{{ product.subtitle }}</p>
+      <small v-if="stockText" :class="{ 'is-low': stock <= 5 }">{{ stockText }}</small>
       <div class="product-card__purchase">
-        <strong>{{ formatPrice(price) }}</strong>
+        <strong>{{ formatMoney(price) }}</strong>
         <RouterLink class="add-button" :to="`/products/${product.id}`" :aria-label="locale.t('product.view', { name: product.name })">
           <UiIcon name="plus" :size="17" />
         </RouterLink>
@@ -49,9 +58,10 @@ const locale = useLocaleStore()
 .favorite.is-active { color: white; background: var(--red); border-color: var(--red); }
 .favorite.is-active :deep(svg) { fill: currentColor; }
 .product-card__body { padding: 13px 14px 12px; border-top: 1px solid var(--line); }
-.product-card h3 { overflow: hidden; margin: 0 0 5px; font-size: 12px; font-weight: 680; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.product-card h3 { display: -webkit-box; min-height: 29px; overflow: hidden; margin: 0 0 5px; font-size: 12px; font-weight: 680; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .product-card h3 a { color: inherit; text-decoration: none; }
 .product-card p { overflow: hidden; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.product-card small { display: block; min-height: 13px; margin-top: 7px; color: #2f6548; font-size: 9px; }.product-card small.is-low { color: #9a5f0b; }
 .product-card__purchase { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 .product-card__purchase strong { font-size: 13px; font-weight: 720; }
 .add-button { display: grid; width: 30px; height: 30px; place-items: center; color: white; background: var(--ink); border-radius: 50%; }

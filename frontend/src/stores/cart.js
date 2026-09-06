@@ -20,6 +20,7 @@ export const useCartStore = defineStore('cart', {
   actions: {
     async fetchCart() {
       this.loading = true
+      this.items = []
       try {
         this.items = await cartApi.getCart() || []
         return this.items
@@ -40,6 +41,13 @@ export const useCartStore = defineStore('cart', {
 
     async deleteItem(cartItemId) {
       await cartApi.deleteCartItem(cartItemId)
+      return this.fetchCart()
+    },
+
+    async updateSelection(items, selected) {
+      await Promise.all(items.map((item) => cartApi.updateCartItem(item.cartItemId, {
+        quantity: Number(item.quantity), selected,
+      })))
       return this.fetchCart()
     },
 

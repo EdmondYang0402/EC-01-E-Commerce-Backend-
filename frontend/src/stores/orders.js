@@ -10,6 +10,7 @@ export const useOrderStore = defineStore('orders', {
     detailLoading: false,
     creating: false,
     cancellingOrderNo: null,
+    receivingOrderId: null,
   }),
 
   actions: {
@@ -24,6 +25,8 @@ export const useOrderStore = defineStore('orders', {
 
     async fetchPage(params = {}) {
       this.listLoading = true
+      this.records = []
+      this.total = 0
       try {
         const page = await orderApi.getMyOrders(params)
         this.records = page?.records || []
@@ -52,6 +55,12 @@ export const useOrderStore = defineStore('orders', {
       } finally {
         this.cancellingOrderNo = null
       }
+    },
+
+    async confirmReceive(orderId) {
+      this.receivingOrderId = orderId
+      try { await orderApi.confirmReceive(orderId) }
+      finally { this.receivingOrderId = null }
     },
   },
 })

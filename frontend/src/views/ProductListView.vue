@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ProductCard from '../components/home/ProductCard.vue'
+import PageState from '../components/common/PageState.vue'
 import { errorMessage } from '../services/http'
 import { useProductStore } from '../stores/products'
 import { useCategoryStore } from '../stores/categories'
@@ -21,6 +22,7 @@ const router = useRouter()
 const t = (key, params) => locale.t(key, params)
 const size = 12
 const keyword = ref('')
+const loadError = ref('')
 const page = computed(() => Math.max(1, Number(route.query.page) || 1))
 const selectedCategoryId = computed(() => {
   const value = Number(route.query.categoryId)
@@ -35,6 +37,7 @@ const selectedChildCategoryId = computed(() => selectedRoot.value?.children?.som
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
 
 const loadProducts = async () => {
+  loadError.value = ''
   try {
     await products.fetchPage({
       page: page.value,
@@ -43,7 +46,7 @@ const loadProducts = async () => {
       categoryId: selectedCategoryId.value || undefined,
     })
   } catch (error) {
-    ElMessage.error(errorMessage(error, t('message.productsFailed')))
+    loadError.value = errorMessage(error, t('message.productsFailed'))
   }
 }
 
@@ -127,8 +130,9 @@ watch(
       <p v-else-if="categoryLoading" class="category-nav__loading">正在加载分类…</p>
     </nav>
 
-    <p v-if="loading" class="state">{{ t('catalog.loading') }}</p>
-    <p v-else-if="!records.length" class="state">{{ t('catalog.empty') }}</p>
+    <PageState v-if="loading" :title="t('catalog.loading')" />
+    <PageState v-else-if="loadError" kind="error" :title="loadError" :action-label="t('common.retry')" @action="loadProducts" />
+    <PageState v-else-if="!records.length" kind="empty" :title="t('catalog.empty')" />
     <div v-else class="catalog__grid">
       <ProductCard
         v-for="product in records"

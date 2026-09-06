@@ -16,4 +16,8 @@ export const orderApi = {
   async cancelOrder(orderNo) {
     return responseData(await http.patch(`/orders/${encodeURIComponent(orderNo)}/cancel`))
   },
+
+  async confirmReceive(orderId) {
+    return responseData(await http.patch(`/orders/${encodeURIComponent(orderId)}/receive`))
+  },
 }
